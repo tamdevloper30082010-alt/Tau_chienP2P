@@ -51,27 +51,34 @@
         padding: 3px 10px; border-radius: 6px; display: inline-block;
     }
 
-    /* Layout chính: bàn địch trên -> chat giữa -> bàn mình dưới, tự co giãn theo chiều cao còn lại */
+    /* Layout chính: bàn địch trên -> chat giữa -> bàn mình dưới.
+       Dùng flex: 1 1 0 trên 2 board-section để chúng CHIA ĐỀU đúng phần
+       không gian còn lại sau khi header + chat đã chiếm chỗ của mình -
+       không bao giờ vượt quá màn hình vì flexbox tự co, không dựa vào vh cố định. */
     .main-container {
         display: flex; flex-direction: column;
-        justify-content: space-between; align-items: center;
+        align-items: center;
         gap: 3px;
-        flex: 1;
+        flex: 1 1 0;
         min-height: 0; /* cho phép con co lại thay vì tràn */
         width: 100%;
+        overflow: hidden;
     }
     .board-section {
         background: #2c3e50; padding: 3px; border-radius: 8px;
-        display: flex; flex-direction: column; align-items: center;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        flex: 1 1 0;
         min-height: 0;
+        width: 100%;
+        max-width: 420px;
     }
     .board {
         display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr);
         gap: 1px; background-color: #1a252c; padding: 2px; border-radius: 5px;
-        /* Kích thước bàn cờ = min(bề rộng khả dụng, chiều cao khả dụng) để luôn vừa khít mọi máy */
-        width: min(38vh, 92vw, 340px);
-        height: min(38vh, 92vw, 340px);
-        aspect-ratio: 1 / 1;
+        margin: 0 auto;
+        /* Kích thước thực (px) được TÍNH BẰNG JS mỗi khi load/xoay màn hình -
+           đảm bảo luôn khớp đúng không gian còn lại, không bao giờ tràn,
+           bất kể vh/dvh tính sai trên trình duyệt mobile nào. */
     }
     .cell { background-color: #34495e; cursor: pointer; transition: 0.15s; border-radius: 2px; position: relative; }
     .cell:hover { background-color: #5d6d7e; }
@@ -150,6 +157,13 @@
     }
     .ship-choice.selected { border-color: #2ecc71; background: #1e8449; }
     .ship-choice.placed { background: #555; opacity: 0.5; cursor: not-allowed; }
+    .ship-choice { touch-action: none; user-select: none; } /* cho phép kéo bằng ngón tay mượt trên mobile */
+    .ship-choice.dragging { opacity: 0.4; }
+    #drag-ghost {
+        position: fixed; pointer-events: none; z-index: 2000;
+        display: flex; gap: 1px; opacity: 0.85;
+    }
+    #drag-ghost .cell { background: rgba(46,204,113,0.7); border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -335,6 +349,46 @@
     createGrid(myBoardEl, false);
     createGrid(enemyBoardEl, true);
 
+    // ================== TỰ TÍNH KÍCH THƯỚC BÀN CỜ THEO KHÔNG GIAN THỰC ==================
+    // Đo chính xác chiều cao/rộng còn lại bằng JS (đáng tin cậy hơn vh/vw trên mobile,
+    // vốn hay tính sai khi thanh địa chỉ trình duyệt ẩn/hiện) để đảm bảo 2 bàn cờ + chat
+    // luôn vừa khít màn hình, không bao giờ tràn ra ngoài.
+    function resizeBoards() {
+        const boardSections = document.querySelectorAll('.board-section');
+        if (boardSections.length < 2) return;
+
+        // Không gian rộng khả dụng: bề rộng của board-section (đã trừ padding)
+        const sectionWidth = boardSections[0].clientWidth - 8;
+
+        // Không gian cao khả dụng: chiều cao thực tế mà mỗi board-section đang có
+        // (flexbox đã tự chia đều rồi, ta chỉ cần trừ phần tiêu đề + hp-bar + padding)
+        let minAvailableHeight = Infinity;
+        boardSections.forEach(section => {
+            const h3 = section.querySelector('h3');
+            const hpBar = section.querySelector('.hp-bar');
+            const reserved = (h3 ? h3.offsetHeight : 0) + (hpBar ? hpBar.offsetHeight : 0) + 10;
+            const available = section.clientHeight - reserved;
+            if (available < minAvailableHeight) minAvailableHeight = available;
+        });
+
+        // Kích thước bàn cờ = cạnh nhỏ hơn giữa rộng và cao khả dụng, trừ hao 1 chút cho an toàn
+        let size = Math.floor(Math.min(sectionWidth, minAvailableHeight)) - 2;
+        if (size < 100) size = 100; // giới hạn tối thiểu để không vỡ layout trên máy quá nhỏ
+        if (size > 420) size = 420; // giới hạn tối đa trên máy/tablet lớn
+
+        document.querySelectorAll('.board').forEach(b => {
+            b.style.width = size + 'px';
+            b.style.height = size + 'px';
+        });
+    }
+
+    window.addEventListener('load', resizeBoards);
+    window.addEventListener('resize', resizeBoards);
+    window.addEventListener('orientationchange', () => setTimeout(resizeBoards, 200));
+    // Chạy ngay khi khởi tạo trang (phòng trường hợp sự kiện 'load' đã trôi qua)
+    setTimeout(resizeBoards, 0);
+    setTimeout(resizeBoards, 300); // chạy lại sau khi font/layout ổn định hoàn toàn
+
     function updateHpDisplay() {
         myHpEl.innerText = `Tàu còn lại: ${myHpRemaining}/17`;
         enemyHpEl.innerText = `Tàu đối thủ còn lại: ${enemyHpRemaining}/17`;
@@ -390,6 +444,7 @@
             document.getElementById('controls-box').style.display = 'block';
             statusText.innerText = "Đã kết nối! Hãy xếp tàu.";
             addChat("Hệ thống: Đã kết nối thành công!");
+            setTimeout(resizeBoards, 50);
         });
 
         conn.on('data', (data) => {
@@ -460,6 +515,7 @@
         resetBoardState();
         setupPanel.style.display = 'none';
         manualMode = false;
+        setTimeout(resizeBoards, 50);
 
         SHIP_LENGTHS.forEach(len => {
             let placed = false;
@@ -503,6 +559,7 @@
         rotateLabel.innerText = "Ngang";
         setupPanel.style.display = 'block';
         renderShipList();
+        setTimeout(resizeBoards, 50);
     });
 
     function renderShipList() {
@@ -517,16 +574,101 @@
             btn.dataset.len = len;
             btn.dataset.shipIndex = i;
 
-            // Đánh dấu đã đặt hết loại tàu này chưa (đơn giản hoá: theo dõi bằng danh sách placedShips)
+            // Chạm/click để CHỌN tàu (cách 1: chọn rồi chạm bàn cờ để đặt)
             btn.addEventListener('click', () => {
                 if (btn.classList.contains('placed')) return;
                 document.querySelectorAll('.ship-choice').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 selectedShipIndex = i;
             });
+            // Kéo-thả trực tiếp từ danh sách vào bàn cờ (cách 2: kéo tàu thả vào ô muốn đặt)
+            btn.addEventListener('pointerdown', (e) => startDragShip(e, btn, i));
             shipListEl.appendChild(btn);
         });
         syncShipListWithPlaced();
+    }
+
+    // ---- Kéo-thả tàu từ danh sách vào bàn cờ ----
+    let dragGhost = null;
+    let draggingShipIndex = null;
+
+    function startDragShip(e, btn, shipIndex) {
+        if (btn.classList.contains('placed')) return;
+        e.preventDefault();
+        draggingShipIndex = shipIndex;
+        btn.classList.add('dragging');
+        document.querySelectorAll('.ship-choice').forEach(b => b.classList.remove('selected'));
+
+        // Tạo "bóng ma" của tàu đi theo ngón tay/con trỏ
+        dragGhost = document.createElement('div');
+        dragGhost.id = 'drag-ghost';
+        const len = SHIP_LENGTHS[shipIndex];
+        const cellSize = myBoardEl.children[0].getBoundingClientRect().width;
+        dragGhost.style.flexDirection = isHorizontal ? 'row' : 'column';
+        for (let i = 0; i < len; i++) {
+            const c = document.createElement('div');
+            c.className = 'cell';
+            c.style.width = cellSize + 'px';
+            c.style.height = cellSize + 'px';
+            dragGhost.appendChild(c);
+        }
+        document.body.appendChild(dragGhost);
+        moveDragGhost(e.clientX, e.clientY);
+
+        window.addEventListener('pointermove', onDragMove);
+        window.addEventListener('pointerup', onDragEnd);
+    }
+
+    function moveDragGhost(clientX, clientY) {
+        if (!dragGhost) return;
+        dragGhost.style.left = (clientX - dragGhost.offsetWidth / 2) + 'px';
+        dragGhost.style.top = (clientY - dragGhost.offsetHeight / 2) + 'px';
+    }
+
+    function onDragMove(e) {
+        moveDragGhost(e.clientX, e.clientY);
+        // Tìm ô bàn cờ đang ở dưới vị trí kéo để hiện xem trước
+        const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+        clearPreview();
+        if (elUnder && elUnder.classList.contains('cell') && elUnder.parentElement === myBoardEl) {
+            const idx = Number(elUnder.dataset.idx);
+            const len = SHIP_LENGTHS[draggingShipIndex];
+            const cells = getPreviewCells(idx, len, isHorizontal);
+            if (cells) {
+                const overlap = cells.some(c => myShips[c] !== 0);
+                cells.forEach(c => {
+                    myBoardEl.children[c].classList.add(overlap ? 'ship-preview-bad' : 'ship-preview');
+                });
+            }
+        }
+    }
+
+    function onDragEnd(e) {
+        window.removeEventListener('pointermove', onDragMove);
+        window.removeEventListener('pointerup', onDragEnd);
+        if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+        document.querySelectorAll('.ship-choice.dragging').forEach(b => b.classList.remove('dragging'));
+        clearPreview();
+
+        const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+        if (elUnder && elUnder.classList.contains('cell') && elUnder.parentElement === myBoardEl) {
+            const idx = Number(elUnder.dataset.idx);
+            const len = SHIP_LENGTHS[draggingShipIndex];
+            const cells = getPreviewCells(idx, len, isHorizontal);
+            if (cells) {
+                const overlap = cells.some(c => myShips[c] !== 0);
+                if (!overlap) {
+                    cells.forEach(c => {
+                        myShips[c] = 1;
+                        myBoardEl.children[c].classList.add('ship');
+                    });
+                    placedShips.push({ length: len, cells });
+                    markAllShipShapes();
+                    syncShipListWithPlaced();
+                }
+            }
+        }
+        draggingShipIndex = null;
     }
 
     function syncShipListWithPlaced() {
@@ -633,6 +775,7 @@
         setupPanel.style.display = 'none';
         btnReady.disabled = false;
         clearPreview();
+        setTimeout(resizeBoards, 50);
     });
 
     function markAllShipShapes() {
@@ -672,6 +815,7 @@
         btnReady.style.display = 'none';
         setupPanel.style.display = 'none';
         statusText.innerText = "Đang chờ đối thủ...";
+        setTimeout(resizeBoards, 50);
         conn.send({ type: 'ready' });
         checkGameStart();
     });
