@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hải Chiến P2P - Bom Rải Thảm</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #1a252c;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 10px;
+    }
+    h1, h2, h3 { margin: 5px 0; }
+    .header { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+    .header input {
+        padding: 10px; border-radius: 5px; border: none; width: 140px;
+        text-align: center; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;
+    }
+    button {
+        padding: 10px 15px; margin: 5px; border-radius: 5px; border: none;
+        background-color: #3498db; color: white; font-weight: bold; cursor: pointer;
+    }
+    button:disabled { background-color: #555; cursor: not-allowed; opacity: 0.6; }
+    #btn-connect { background-color: #2ecc71; }
+    #btn-airstrike { background-color: #e67e22; }
+    #btn-airstrike.active { background-color: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
+
+    #my-room-code {
+        font-size: 22px; letter-spacing: 4px; background: #1a252c;
+        padding: 6px 14px; border-radius: 6px; display: inline-block;
+    }
+
+    .main-container {
+        display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .board-section { background: #2c3e50; padding: 10px; border-radius: 8px; width: fit-content; }
+    .board {
+        display: grid; grid-template-columns: repeat(10, 28px); grid-template-rows: repeat(10, 28px);
+        gap: 2px; background-color: #1a252c; padding: 2px; border-radius: 5px; margin: 0 auto;
+    }
+    .cell { background-color: #34495e; cursor: pointer; transition: 0.15s; border-radius: 3px; position: relative; }
+    .cell:hover { background-color: #5d6d7e; }
+
+    /* Tàu vẽ bằng CSS: thân tàu xám bạc, có viền và bóng để trông như khối tàu thật */
+    .cell.ship {
+        background: linear-gradient(160deg, #b0bec5, #78909c);
+        border: 1px solid #546e7a;
+        box-shadow: inset 0 2px 3px rgba(255,255,255,0.3), inset 0 -2px 3px rgba(0,0,0,0.3);
+    }
+    .cell.ship.ship-h-mid { border-radius: 2px; }
+    .cell.ship.ship-end-left { border-radius: 12px 3px 3px 12px; }
+    .cell.ship.ship-end-right { border-radius: 3px 12px 12px 3px; }
+    .cell.ship.ship-end-top { border-radius: 12px 12px 3px 3px; }
+    .cell.ship.ship-end-bottom { border-radius: 3px 3px 12px 12px; }
+    .cell.ship.ship-single { border-radius: 50%; }
+
+    .cell.hit {
+        background: radial-gradient(circle, #ff6b5b 0%, #c0392b 100%);
+        pointer-events: none;
+    }
+    .cell.hit::after { content: "🔥"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .cell.miss {
+        background-color: #ecf0f1;
+        pointer-events: none;
+    }
+    .cell.miss::after { content: "•"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #7f8c8d; }
+
+    .hp-bar { font-size: 13px; margin-top: 4px; color: #f1c40f; }
+
+    .chat-section {
+        width: 100%; max-width: 320px; background: #2c3e50; border-radius: 8px;
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    #chat-messages {
+        height: 110px; overflow-y: auto; padding: 10px; text-align: left; font-size: 13px; flex-grow: 1;
+    }
+    .chat-input { display: flex; }
+    .chat-input input { flex-grow: 1; padding: 10px; border: none; outline: none; }
+    .chat-input button { margin: 0; border-radius: 0; background: #2ecc71; }
+
+    .highlight { color: #f1c40f; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🚢 HẢI CHIẾN P2P 💥</h1>
+    <h2 id="status-text">Đang tạo kết nối mạng...</h2>
+
+    <div id="connection-box">
+        <p>Mã phòng của bạn: <span id="my-room-code" class="highlight">----</span></p>
+        <div>
+            <input type="text" id="enemy-id-input" placeholder="Mã bạn bè" maxlength="4">
+            <button id="btn-connect">Kết nối</button>
+        </div>
+        <p id="connect-error" style="color:#e74c3c; font-size:13px; display:none;"></p>
+    </div>
+
+    <div id="controls-box" style="display: none; margin-top: 10px;">
+        <button id="btn-random">Xếp tàu ngẫu nhiên</button>
+        <button id="btn-ready" disabled>Sẵn sàng</button>
+        <button id="btn-airstrike" disabled>💣 Dùng Bom Rải Thảm (1 lần)</button>
+    </div>
+</div>
+
+<div class="main-container">
+    <!-- Bảng tấn công (đối thủ) - đặt trên cùng -->
+    <div class="board-section">
+        <h3>🎯 Bàn cờ đối thủ (bắn vào đây)</h3>
+        <div id="enemy-board" class="board"></div>
+        <div class="hp-bar" id="enemy-hp"></div>
+    </div>
+
+    <!-- Khung chat -->
+    <div class="chat-section">
+        <div id="chat-messages"></div>
+        <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Nhập tin nhắn...">
+            <button onclick="sendChat()">Gửi</button>
+        </div>
+    </div>
+
+    <!-- Bảng của mình - đặt dưới cùng -->
+    <div class="board-section">
+        <h3>🛡️ Bàn cờ của bạn</h3>
+        <div id="my-board" class="board"></div>
+        <div class="hp-bar" id="my-hp"></div>
+    </div>
+</div>
+
+<script>
+    // ================== MÃ PHÒNG RÚT GỌN ==================
+    // PeerJS ID gốc rất dài và khó nhớ/đọc qua điện thoại.
+    // Ta tự đặt peer ID theo dạng cố định "hc-XXXX" (XXXX là 4 ký tự dễ đọc,
+    // bỏ các ký tự dễ nhầm như 0/O, 1/I) và chỉ hiển thị phần XXXX cho người chơi.
+    const ROOM_PREFIX = "hc-battle-";
+    const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // bỏ 0,O,1,I
+
+    function generateRoomCode(length = 4) {
+        let code = "";
+        for (let i = 0; i < length; i++) {
+            code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+        }
+        return code;
+    }
+
+    let myRoomCode = generateRoomCode();
+    let peer = null;
+    let conn = null;
+    let isConnecting = false;
+
+    function initPeer() {
+        peer = new Peer(ROOM_PREFIX + myRoomCode);
+
+        peer.on('open', () => {
+            document.getElementById('my-room-code').innerText = myRoomCode;
+            statusText.innerText = "Chờ bạn bè kết nối...";
+        });
+
+        // Nếu mã bị trùng (hiếm khi, do người khác đang dùng), tạo mã mới và thử lại
+        peer.on('error', (err) => {
+            if (err.type === 'unavailable-id') {
+                myRoomCode = generateRoomCode();
+                peer.destroy();
+                initPeer();
+                return;
+            }
+            handlePeerError(err);
+        });
+
+        // Khi BẠN BÈ gọi tới mình (Mình làm Host)
+        peer.on('connection', (connection) => {
+            if (conn && conn.open) {
+                // Đã có người chơi rồi, từ chối kết nối thêm
+                connection.on('open', () => connection.close());
+                return;
+            }
+            conn = connection;
+            isHost = true; // Host được quyền đi trước
+            setupConnection();
+        });
+    }
+    initPeer();
+
+    // ================== BIẾN TRẠNG THÁI ==================
+    let myShips = new Array(100).fill(0);
+    let myHp = 0;
+    let enemyHpRemaining = 17; // tổng số ô tàu (5+4+3+3+2)
+    let myHpRemaining = 17;
+    let isHost = false;
+    let enemyReady = false;
+    let myReady = false;
+    let myTurn = false;
+    let gameStarted = false;
+    let hasAirstrike = true;
+    let airstrikeMode = false;
+
+    const myBoardEl = document.getElementById('my-board');
+    const enemyBoardEl = document.getElementById('enemy-board');
+    const statusText = document.getElementById('status-text');
+    const btnAirstrike = document.getElementById('btn-airstrike');
+    const btnConnect = document.getElementById('btn-connect');
+    const chatMessages = document.getElementById('chat-messages');
+    const connectError = document.getElementById('connect-error');
+    const myHpEl = document.getElementById('my-hp');
+    const enemyHpEl = document.getElementById('enemy-hp');
+
+    // ================== 1. TẠO LƯỚI BÀN CỜ ==================
+    function createGrid(element, isEnemy) {
+        for (let i = 0; i < 100; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            if (isEnemy) cell.addEventListener('click', () => fireAt(i));
+            element.appendChild(cell);
+        }
+    }
+    createGrid(myBoardEl, false);
+    createGrid(enemyBoardEl, true);
+
+    function updateHpDisplay() {
+        myHpEl.innerText = `Tàu còn lại: ${myHpRemaining}/17`;
+        enemyHpEl.innerText = `Tàu đối thủ còn lại (ước tính): ${enemyHpRemaining}/17`;
+    }
+    updateHpDisplay();
+
+    // ================== 2. KẾT NỐI MẠNG P2P ==================
+    btnConnect.addEventListener('click', () => {
+        if (isConnecting) return; // chặn bấm nhiều lần liên tiếp
+        connectError.style.display = 'none';
+
+        const code = document.getElementById('enemy-id-input').value.trim().toUpperCase();
+        if (!code || code.length < 4) {
+            connectError.innerText = "Vui lòng nhập mã 4 ký tự của bạn bè!";
+            connectError.style.display = 'block';
+            return;
+        }
+        if (!peer || !peer.open) {
+            connectError.innerText = "Đang khởi tạo kết nối, thử lại sau vài giây.";
+            connectError.style.display = 'block';
+            return;
+        }
+
+        isConnecting = true;
+        btnConnect.disabled = true;
+        btnConnect.innerText = "Đang kết nối...";
+
+        conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
+        isHost = false;
+
+        // Nếu không mở được trong 8 giây (mã sai / người kia chưa online), báo lỗi
+        const timeout = setTimeout(() => {
+            if (!conn || !conn.open) {
+                connectError.innerText = "Không kết nối được. Kiểm tra lại mã phòng!";
+                connectError.style.display = 'block';
+                resetConnectButton();
+                if (conn) conn.close();
+            }
+        }, 8000);
+
+        conn.on('open', () => clearTimeout(timeout));
+        setupConnection();
+    });
+
+    function resetConnectButton() {
+        isConnecting = false;
+        btnConnect.disabled = false;
+        btnConnect.innerText = "Kết nối";
+    }
+
+    function setupConnection() {
+        conn.on('open', () => {
+            document.getElementById('connection-box').style.display = 'none';
+            document.getElementById('controls-box').style.display = 'block';
+            statusText.innerText = "Đã kết nối! Hãy xếp tàu.";
+            addChat("Hệ thống: Đã kết nối thành công!");
+        });
+
+        conn.on('data', (data) => {
+            if (data.type === 'chat') {
+                addChat("Đối thủ: " + data.text);
+            }
+            else if (data.type === 'ready') {
+                enemyReady = true;
+                addChat("Hệ thống: Đối thủ đã sẵn sàng!");
+                checkGameStart();
+            }
+            else if (data.type === 'fire') {
+                handleIncomingFire(data);
+            }
+            else if (data.type === 'fire-result') {
+                handleFireResult(data);
+            }
+        });
+
+        conn.on('close', () => handleDisconnect("Đối thủ đã rời khỏi trận đấu."));
+        conn.on('error', () => handleDisconnect("Mất kết nối với đối thủ."));
+    }
+
+    function handleDisconnect(message) {
+        if (!gameStarted && !conn) return; // tránh báo lặp
+        gameStarted = false;
+        myTurn = false;
+        statusText.innerText = "⚠️ " + message;
+        addChat("Hệ thống: " + message + " Tải lại trang để chơi ván mới.");
+        document.querySelectorAll('#enemy-board .cell').forEach(c => c.style.pointerEvents = 'none');
+        btnAirstrike.disabled = true;
+    }
+
+    function handlePeerError(err) {
+        console.error(err);
+        statusText.innerText = "⚠️ Lỗi kết nối mạng. Thử tải lại trang.";
+    }
+
+    // ================== 3. XẾP TÀU & SẴN SÀNG ==================
+    // Đánh dấu hình dạng tàu (đầu/thân/đơn) để CSS vẽ đúng khối liền
+    function markShipShapes() {
+        const shipCells = [];
+        for (let i = 0; i < 100; i++) if (myShips[i] === 1) shipCells.push(i);
+
+        shipCells.forEach(idx => {
+            const x = idx % 10, y = Math.floor(idx / 10);
+            const leftIsShip = x > 0 && myShips[idx - 1] === 1;
+            const rightIsShip = x < 9 && myShips[idx + 1] === 1;
+            const upIsShip = y > 0 && myShips[idx - 10] === 1;
+            const downIsShip = y < 9 && myShips[idx + 10] === 1;
+            const cellEl = myBoardEl.children[idx];
+
+            if (!leftIsShip && !rightIsShip && !upIsShip && !downIsShip) {
+                cellEl.classList.add('ship-single');
+            } else if (leftIsShip || rightIsShip) {
+                if (!leftIsShip) cellEl.classList.add('ship-end-left');
+                else if (!rightIsShip) cellEl.classList.add('ship-end-right');
+                else cellEl.classList.add('ship-h-mid');
+            } else if (upIsShip || downIsShip) {
+                if (!upIsShip) cellEl.classList.add('ship-end-top');
+                else if (!downIsShip) cellEl.classList.add('ship-end-bottom');
+                else cellEl.classList.add('ship-h-mid');
+            }
+        });
+    }
+
+    document.getElementById('btn-random').addEventListener('click', () => {
+        myShips.fill(0);
+        myHp = 0;
+        myHpRemaining = 17;
+        Array.from(myBoardEl.children).forEach(c => {
+            c.className = 'cell';
+        });
+
+        const shipLengths = [5, 4, 3, 3, 2];
+        shipLengths.forEach(len => {
+            let placed = false;
+            while (!placed) {
+                const isHorizontal = Math.random() > 0.5;
+                const start = Math.floor(Math.random() * 100);
+                const x = start % 10;
+                const y = Math.floor(start / 10);
+
+                if (isHorizontal && x + len > 10) continue;
+                if (!isHorizontal && y + len > 10) continue;
+
+                let canPlace = true;
+                for (let i = 0; i < len; i++) {
+                    const idx = isHorizontal ? start + i : start + i * 10;
+                    if (myShips[idx] !== 0) canPlace = false;
+                }
+
+                if (canPlace) {
+                    for (let i = 0; i < len; i++) {
+                        const idx = isHorizontal ? start + i : start + i * 10;
+                        myShips[idx] = 1;
+                        myHp++;
+                        myBoardEl.children[idx].classList.add('ship');
+                    }
+                    placed = true;
+                }
+            }
+        });
+        markShipShapes();
+        updateHpDisplay();
+        document.getElementById('btn-ready').disabled = false;
+    });
+
+    document.getElementById('btn-ready').addEventListener('click', () => {
+        myReady = true;
+        document.getElementById('btn-random').style.display = 'none';
+        document.getElementById('btn-ready').style.display = 'none';
+        statusText.innerText = "Đang chờ đối thủ...";
+        conn.send({ type: 'ready' });
+        checkGameStart();
+    });
+
+    function checkGameStart() {
+        if (myReady && enemyReady) {
+            gameStarted = true;
+            myTurn = isHost; // Host đi trước
+            btnAirstrike.disabled = false;
+            updateTurnUI();
+        }
+    }
+
+    function updateTurnUI() {
+        if (myTurn) {
+            statusText.innerText = "🎯 LƯỢT CỦA BẠN! Hãy bắn.";
+            document.body.style.backgroundColor = "#27ae60";
+            setTimeout(() => document.body.style.backgroundColor = "#1a252c", 500);
+        } else {
+            statusText.innerText = "⏳ Đối thủ đang suy nghĩ...";
+        }
+    }
+
+    // ================== 4. BOM RẢI THẢM ==================
+    btnAirstrike.addEventListener('click', () => {
+        if (!myTurn || !hasAirstrike || !gameStarted) return;
+        airstrikeMode = !airstrikeMode;
+        btnAirstrike.classList.toggle('active');
+        btnAirstrike.innerText = airstrikeMode ? "🔥 Chọn mục tiêu rải thảm..." : "💣 Dùng Bom Rải Thảm (1 lần)";
+    });
+
+    // ================== 5. LOGIC BẮN TÀU (ATTACKER) ==================
+    function fireAt(index) {
+        if (!gameStarted || !myTurn) return;
+        const cell = enemyBoardEl.children[index];
+        if (cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+
+        myTurn = false; // khóa lượt ngay lập tức, chặn bắn 2 phát liên tiếp
+        statusText.innerText = "Đang xem kết quả...";
+
+        conn.send({ type: 'fire', index: index, isAirstrike: airstrikeMode });
+
+        if (airstrikeMode) {
+            hasAirstrike = false;
+            airstrikeMode = false;
+            btnAirstrike.disabled = true;
+            btnAirstrike.classList.remove('active');
+            btnAirstrike.innerText = "❌ Đã hết bom";
+        }
+    }
+
+    // ================== 6. LOGIC BỊ BẮN (DEFENDER TÍNH TOÁN) ==================
+    function handleIncomingFire(data) {
+        let targets = [data.index];
+        if (data.isAirstrike) {
+            addChat("Hệ thống: Đối thủ vừa dùng BOM RẢI THẢM 💣!");
+            const x = data.index % 10;
+            const y = Math.floor(data.index / 10);
+            if (x > 0) targets.push(data.index - 1);
+            if (x < 9) targets.push(data.index + 1);
+            if (y > 0) targets.push(data.index - 10);
+            if (y < 9) targets.push(data.index + 10);
+        }
+
+        let hits = [];
+        let misses = [];
+
+        targets.forEach(idx => {
+            if (myShips[idx] === 1) {
+                hits.push(idx);
+                myShips[idx] = -1;
+                myHpRemaining--;
+                myBoardEl.children[idx].classList.add('hit');
+            } else if (myShips[idx] === 0) {
+                misses.push(idx);
+                myShips[idx] = -2;
+                myBoardEl.children[idx].classList.add('miss');
+            }
+            // Nếu ô đã là -1/-2 (đã bắn trước đó, có thể do airstrike lan vào), bỏ qua không tính lại
+        });
+
+        updateHpDisplay();
+        const gameOver = (myHpRemaining <= 0);
+
+        conn.send({ type: 'fire-result', hits: hits, misses: misses, gameOver: gameOver });
+
+        if (gameOver) {
+            statusText.innerText = "BẠN ĐÃ THUA! 💥";
+            gameStarted = false;
+            alert("Toàn bộ tàu của bạn đã bị chìm!");
+        } else {
+            // Trúng hay trượt đều CHUYỂN LƯỢT cho đối thủ (không cho bắn tiếp)
+            statusText.innerText = hits.length > 0
+                ? "Tàu của bạn bị trúng đạn! Đến lượt bạn."
+                : "Đối thủ bắn trượt! Đến lượt bạn.";
+            myTurn = true;
+            updateTurnUI();
+        }
+    }
+
+    // ================== 7. NHẬN KẾT QUẢ BẮN TỪ ĐỐI THỦ ==================
+    function handleFireResult(data) {
+        data.hits.forEach(idx => enemyBoardEl.children[idx].classList.add('hit'));
+        data.misses.forEach(idx => enemyBoardEl.children[idx].classList.add('miss'));
+
+        if (data.hits.length > 0) enemyHpRemaining -= data.hits.length;
+        updateHpDisplay();
+
+        if (data.gameOver) {
+            statusText.innerText = "BẠN ĐÃ THẮNG! 🏆";
+            gameStarted = false;
+            alert("Chúc mừng! Bạn đã tiêu diệt hết tàu của đối phương!");
+        } else {
+            // Luôn chuyển lượt về phía đối thủ, dù bắn trúng hay trượt
+            myTurn = false;
+            updateTurnUI();
+        }
+    }
+
+    // ================== 8. KHUNG CHAT ==================
+    function sendChat() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (text && conn && conn.open) {
+            conn.send({ type: 'chat', text: text });
+            addChat("Bạn: " + text);
+            input.value = '';
+        }
+    }
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChat();
+    });
+    function addChat(msg) {
+        chatMessages.innerHTML += `<div>${msg}</div>`;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+</script>
+</body>
+</html>
