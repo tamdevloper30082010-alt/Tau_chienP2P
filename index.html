@@ -15,14 +15,14 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        overflow: hidden; /* không cho cuộn trang, mọi thứ phải vừa màn hình */
+        overflow: hidden;
     }
     body {
         padding: 4px;
         display: flex;
         flex-direction: column;
         height: 100vh;
-        height: 100dvh; /* ưu tiên chiều cao thực của viewport trên mobile */
+        height: 100dvh;
     }
     h1 { font-size: 15px; margin: 2px 0; }
     h2 { font-size: 11px; margin: 2px 0; }
@@ -44,6 +44,7 @@
     #btn-airstrike.active { background-color: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
     #btn-help { background-color: #8e44ad; }
     #btn-rotate { background-color: #16a085; }
+    #btn-undo-ship { background-color: #c0392b; }
     #btn-confirm-setup { background-color: #2ecc71; }
 
     #my-room-code {
@@ -51,16 +52,12 @@
         padding: 3px 10px; border-radius: 6px; display: inline-block;
     }
 
-    /* Layout chính: bàn địch trên -> chat giữa -> bàn mình dưới.
-       Dùng flex: 1 1 0 trên 2 board-section để chúng CHIA ĐỀU đúng phần
-       không gian còn lại sau khi header + chat đã chiếm chỗ của mình -
-       không bao giờ vượt quá màn hình vì flexbox tự co, không dựa vào vh cố định. */
     .main-container {
         display: flex; flex-direction: column;
         align-items: center;
         gap: 3px;
         flex: 1 1 0;
-        min-height: 0; /* cho phép con co lại thay vì tràn */
+        min-height: 0;
         width: 100%;
         overflow: hidden;
     }
@@ -76,9 +73,6 @@
         display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr);
         gap: 1px; background-color: #1a252c; padding: 2px; border-radius: 5px;
         margin: 0 auto;
-        /* Kích thước thực (px) được TÍNH BẰNG JS mỗi khi load/xoay màn hình -
-           đảm bảo luôn khớp đúng không gian còn lại, không bao giờ tràn,
-           bất kể vh/dvh tính sai trên trình duyệt mobile nào. */
     }
     .cell { background-color: #34495e; cursor: pointer; transition: 0.15s; border-radius: 2px; position: relative; }
     .cell:hover { background-color: #5d6d7e; }
@@ -125,7 +119,6 @@
 
     .highlight { color: #f1c40f; }
 
-    /* Popup luật chơi */
     .modal-overlay {
         position: fixed; inset: 0; background: rgba(0,0,0,0.8);
         display: flex; align-items: center; justify-content: center;
@@ -145,7 +138,6 @@
         padding: 12px; font-size: 15px;
     }
 
-    /* Panel xếp tàu thủ công */
     #setup-panel {
         background: #2c3e50; border-radius: 8px; padding: 5px; margin-bottom: 3px;
         flex-shrink: 0; display: none;
@@ -157,7 +149,7 @@
     }
     .ship-choice.selected { border-color: #2ecc71; background: #1e8449; }
     .ship-choice.placed { background: #555; opacity: 0.5; cursor: not-allowed; }
-    .ship-choice { touch-action: none; user-select: none; } /* cho phép kéo bằng ngón tay mượt trên mobile */
+    .ship-choice { touch-action: none; user-select: none; }
     .ship-choice.dragging { opacity: 0.4; }
     #drag-ghost {
         position: fixed; pointer-events: none; z-index: 2000;
@@ -168,7 +160,6 @@
 </head>
 <body>
 
-<!-- ============ POPUP LUẬT CHƠI (đơn giản, không thuật ngữ kỹ thuật) ============ -->
 <div id="rules-modal" class="modal-overlay">
     <div class="modal-box">
         <h2>📖 Cách Chơi</h2>
@@ -224,23 +215,21 @@
     </div>
 </div>
 
-<!-- Panel chọn tàu khi tự xếp thủ công -->
 <div id="setup-panel">
-    <span style="font-size:11px;">Chọn tàu rồi chạm vào bàn cờ để đặt:</span>
+    <span style="font-size:11px;">Chọn hoặc kéo tàu vào bàn cờ để đặt:</span>
     <div class="ship-list" id="ship-list"></div>
     <button id="btn-rotate">🔄 Xoay hướng: <span id="rotate-label">Ngang</span></button>
+    <button id="btn-undo-ship" disabled>↩️ Hoàn tác</button>
     <button id="btn-confirm-setup" disabled>✅ Xong, xếp tàu xong rồi</button>
 </div>
 
 <div class="main-container">
-    <!-- Bảng tấn công (đối thủ) -->
     <div class="board-section">
         <h3>🎯 Bàn cờ đối thủ</h3>
         <div id="enemy-board" class="board"></div>
         <div class="hp-bar" id="enemy-hp"></div>
     </div>
 
-    <!-- Khung chat -->
     <div class="chat-section">
         <div id="chat-messages"></div>
         <div class="chat-input">
@@ -249,7 +238,6 @@
         </div>
     </div>
 
-    <!-- Bảng của mình -->
     <div class="board-section">
         <h3>🛡️ Bàn cờ của bạn</h3>
         <div id="my-board" class="board"></div>
@@ -258,7 +246,6 @@
 </div>
 
 <script>
-    // ================== POPUP LUẬT CHƠI ==================
     const rulesModal = document.getElementById('rules-modal');
     document.getElementById('btn-close-rules').addEventListener('click', () => {
         rulesModal.style.display = 'none';
@@ -267,7 +254,6 @@
         rulesModal.style.display = 'flex';
     });
 
-    // ================== MÃ PHÒNG RÚT GỌN ==================
     const ROOM_PREFIX = "hc-battle-";
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -314,7 +300,6 @@
     }
     initPeer();
 
-    // ================== BIẾN TRẠNG THÁI ==================
     let myShips = new Array(100).fill(0);
     let enemyHpRemaining = 17;
     let myHpRemaining = 17;
@@ -336,7 +321,6 @@
     const myHpEl = document.getElementById('my-hp');
     const enemyHpEl = document.getElementById('enemy-hp');
 
-    // ================== 1. TẠO LƯỚI BÀN CỜ ==================
     function createGrid(element, isEnemy) {
         for (let i = 0; i < 100; i++) {
             const cell = document.createElement('div');
@@ -349,19 +333,12 @@
     createGrid(myBoardEl, false);
     createGrid(enemyBoardEl, true);
 
-    // ================== TỰ TÍNH KÍCH THƯỚC BÀN CỜ THEO KHÔNG GIAN THỰC ==================
-    // Đo chính xác chiều cao/rộng còn lại bằng JS (đáng tin cậy hơn vh/vw trên mobile,
-    // vốn hay tính sai khi thanh địa chỉ trình duyệt ẩn/hiện) để đảm bảo 2 bàn cờ + chat
-    // luôn vừa khít màn hình, không bao giờ tràn ra ngoài.
     function resizeBoards() {
         const boardSections = document.querySelectorAll('.board-section');
         if (boardSections.length < 2) return;
 
-        // Không gian rộng khả dụng: bề rộng của board-section (đã trừ padding)
         const sectionWidth = boardSections[0].clientWidth - 8;
 
-        // Không gian cao khả dụng: chiều cao thực tế mà mỗi board-section đang có
-        // (flexbox đã tự chia đều rồi, ta chỉ cần trừ phần tiêu đề + hp-bar + padding)
         let minAvailableHeight = Infinity;
         boardSections.forEach(section => {
             const h3 = section.querySelector('h3');
@@ -371,10 +348,9 @@
             if (available < minAvailableHeight) minAvailableHeight = available;
         });
 
-        // Kích thước bàn cờ = cạnh nhỏ hơn giữa rộng và cao khả dụng, trừ hao 1 chút cho an toàn
         let size = Math.floor(Math.min(sectionWidth, minAvailableHeight)) - 2;
-        if (size < 100) size = 100; // giới hạn tối thiểu để không vỡ layout trên máy quá nhỏ
-        if (size > 420) size = 420; // giới hạn tối đa trên máy/tablet lớn
+        if (size < 100) size = 100;
+        if (size > 420) size = 420;
 
         document.querySelectorAll('.board').forEach(b => {
             b.style.width = size + 'px';
@@ -385,9 +361,8 @@
     window.addEventListener('load', resizeBoards);
     window.addEventListener('resize', resizeBoards);
     window.addEventListener('orientationchange', () => setTimeout(resizeBoards, 200));
-    // Chạy ngay khi khởi tạo trang (phòng trường hợp sự kiện 'load' đã trôi qua)
     setTimeout(resizeBoards, 0);
-    setTimeout(resizeBoards, 300); // chạy lại sau khi font/layout ổn định hoàn toàn
+    setTimeout(resizeBoards, 300);
 
     function updateHpDisplay() {
         myHpEl.innerText = `Tàu còn lại: ${myHpRemaining}/17`;
@@ -395,7 +370,6 @@
     }
     updateHpDisplay();
 
-    // ================== 2. KẾT NỐI MẠNG ==================
     btnConnect.addEventListener('click', () => {
         if (isConnecting) return;
         connectError.style.display = 'none';
@@ -483,21 +457,21 @@
         statusText.innerText = "⚠️ Lỗi kết nối. Thử tải lại trang.";
     }
 
-    // ================== 3. XẾP TÀU (NGẪU NHIÊN + THỦ CÔNG) ==================
     const SHIP_LENGTHS = [5, 4, 3, 3, 2];
     const setupPanel = document.getElementById('setup-panel');
     const shipListEl = document.getElementById('ship-list');
     const btnRotate = document.getElementById('btn-rotate');
     const rotateLabel = document.getElementById('rotate-label');
     const btnConfirmSetup = document.getElementById('btn-confirm-setup');
+    const btnUndoShip = document.getElementById('btn-undo-ship');
     const btnReady = document.getElementById('btn-ready');
     const btnRandom = document.getElementById('btn-random');
     const btnManual = document.getElementById('btn-manual');
 
     let manualMode = false;
     let isHorizontal = true;
-    let selectedShipIndex = null; // index trong SHIP_LENGTHS
-    let placedShips = []; // { length, cells: [] }
+    let selectedShipIndex = null;
+    let placedShips = [];
 
     function resetBoardState() {
         myShips.fill(0);
@@ -508,9 +482,9 @@
         });
         updateHpDisplay();
         btnReady.disabled = true;
+        btnUndoShip.disabled = true;
     }
 
-    // ---- Xếp ngẫu nhiên ----
     btnRandom.addEventListener('click', () => {
         resetBoardState();
         setupPanel.style.display = 'none';
@@ -550,7 +524,6 @@
         btnReady.disabled = false;
     });
 
-    // ---- Tự xếp tàu thủ công ----
     btnManual.addEventListener('click', () => {
         resetBoardState();
         manualMode = true;
@@ -565,30 +538,24 @@
     function renderShipList() {
         shipListEl.innerHTML = '';
         SHIP_LENGTHS.forEach((len, i) => {
-            const already = placedShips.filter(s => s.length === len).length;
-            const totalOfThisLen = SHIP_LENGTHS.filter(l => l === len).length;
-            const usedCount = placedShips.filter((s, idx2) => s.length === len).length;
             const btn = document.createElement('div');
             btn.className = 'ship-choice';
             btn.innerText = `Tàu ${len} ô`;
             btn.dataset.len = len;
             btn.dataset.shipIndex = i;
 
-            // Chạm/click để CHỌN tàu (cách 1: chọn rồi chạm bàn cờ để đặt)
             btn.addEventListener('click', () => {
                 if (btn.classList.contains('placed')) return;
                 document.querySelectorAll('.ship-choice').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 selectedShipIndex = i;
             });
-            // Kéo-thả trực tiếp từ danh sách vào bàn cờ (cách 2: kéo tàu thả vào ô muốn đặt)
             btn.addEventListener('pointerdown', (e) => startDragShip(e, btn, i));
             shipListEl.appendChild(btn);
         });
         syncShipListWithPlaced();
     }
 
-    // ---- Kéo-thả tàu từ danh sách vào bàn cờ ----
     let dragGhost = null;
     let draggingShipIndex = null;
 
@@ -599,7 +566,6 @@
         btn.classList.add('dragging');
         document.querySelectorAll('.ship-choice').forEach(b => b.classList.remove('selected'));
 
-        // Tạo "bóng ma" của tàu đi theo ngón tay/con trỏ
         dragGhost = document.createElement('div');
         dragGhost.id = 'drag-ghost';
         const len = SHIP_LENGTHS[shipIndex];
@@ -627,7 +593,6 @@
 
     function onDragMove(e) {
         moveDragGhost(e.clientX, e.clientY);
-        // Tìm ô bàn cờ đang ở dưới vị trí kéo để hiện xem trước
         const elUnder = document.elementFromPoint(e.clientX, e.clientY);
         clearPreview();
         if (elUnder && elUnder.classList.contains('cell') && elUnder.parentElement === myBoardEl) {
@@ -672,18 +637,9 @@
     }
 
     function syncShipListWithPlaced() {
-        // Ẩn/khoá các lựa chọn tàu đã được đặt (theo thứ tự độ dài)
-        const remainingLens = [...SHIP_LENGTHS];
-        placedShips.forEach(s => {
-            const idx = remainingLens.indexOf(s.length);
-            if (idx > -1) remainingLens.splice(idx, 1);
-        });
-
         const buttons = Array.from(shipListEl.children);
-        // Reset tất cả về chưa đặt
         buttons.forEach(b => { b.classList.remove('placed'); });
 
-        // Đếm số tàu mỗi độ dài đã đặt, khoá đúng số lượng nút tương ứng
         const placedCountByLen = {};
         placedShips.forEach(s => { placedCountByLen[s.length] = (placedCountByLen[s.length] || 0) + 1; });
 
@@ -701,15 +657,28 @@
         });
 
         btnConfirmSetup.disabled = placedShips.length < SHIP_LENGTHS.length;
+        btnUndoShip.disabled = placedShips.length === 0;
         selectedShipIndex = null;
     }
+
+    // ---- Hoàn tác: gỡ tàu vừa đặt gần đây nhất ----
+    function undoLastShip() {
+        if (placedShips.length === 0) return;
+        const lastShip = placedShips.pop();
+        lastShip.cells.forEach(idx => {
+            myShips[idx] = 0;
+            myBoardEl.children[idx].classList.remove('ship');
+        });
+        markAllShipShapes();
+        syncShipListWithPlaced();
+    }
+    btnUndoShip.addEventListener('click', undoLastShip);
 
     btnRotate.addEventListener('click', () => {
         isHorizontal = !isHorizontal;
         rotateLabel.innerText = isHorizontal ? "Ngang" : "Dọc";
     });
 
-    // Xem trước vị trí đặt tàu khi rê/chạm
     function getPreviewCells(startIdx, len, horiz) {
         const x = startIdx % 10, y = Math.floor(startIdx / 10);
         if (horiz && x + len > 10) return null;
@@ -779,7 +748,6 @@
     });
 
     function markAllShipShapes() {
-        // Xoá style hình dạng cũ trước khi vẽ lại toàn bộ
         Array.from(myBoardEl.children).forEach(c => {
             c.classList.remove('ship-h-mid', 'ship-end-left', 'ship-end-right', 'ship-end-top', 'ship-end-bottom', 'ship-single');
         });
@@ -839,7 +807,6 @@
         }
     }
 
-    // ================== 4. BOM RẢI THẢM ==================
     btnAirstrike.addEventListener('click', () => {
         if (!myTurn || !hasAirstrike || !gameStarted) return;
         airstrikeMode = !airstrikeMode;
@@ -847,7 +814,6 @@
         btnAirstrike.innerText = airstrikeMode ? "🔥 Chọn mục tiêu..." : "💣 Bom Rải Thảm";
     });
 
-    // ================== 5. LOGIC BẮN TÀU ==================
     function fireAt(index) {
         if (!gameStarted || !myTurn) return;
         const cell = enemyBoardEl.children[index];
@@ -867,7 +833,6 @@
         }
     }
 
-    // ================== 6. LOGIC BỊ BẮN ==================
     function handleIncomingFire(data) {
         let targets = [data.index];
         if (data.isAirstrike) {
@@ -914,7 +879,6 @@
         }
     }
 
-    // ================== 7. NHẬN KẾT QUẢ BẮN ==================
     function handleFireResult(data) {
         data.hits.forEach(idx => enemyBoardEl.children[idx].classList.add('hit'));
         data.misses.forEach(idx => enemyBoardEl.children[idx].classList.add('miss'));
@@ -932,7 +896,6 @@
         }
     }
 
-    // ================== 8. KHUNG CHAT ==================
     function sendChat() {
         const input = document.getElementById('chat-input');
         const text = input.value.trim();
@@ -951,4 +914,4 @@
     }
 </script>
 </body>
-</html>
+       </html>
