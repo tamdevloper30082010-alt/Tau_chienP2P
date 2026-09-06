@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>đánh tàu</title>
+<title>Hải Chiến - Đỉnh Cao Chiến Thuật</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-    /* BẢNG MÀU VÀ HIỆU ỨNG MỚI */
+    /* BẢNG MÀU VÀ HIỆU ỨNG */
     :root {
         --bg-color: #0b132b;
         --panel-bg: rgba(28, 37, 65, 0.85);
@@ -20,29 +20,51 @@
     html, body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background: radial-gradient(circle at center, #1c2541 0%, #0b132b 100%);
-        color: white;
-        text-align: center;
-        margin: 0; padding: 0;
+        color: white; text-align: center; margin: 0; padding: 0;
         height: 100%; overflow: hidden;
     }
-    body {
-        padding: 4px; display: flex; flex-direction: column;
-        height: 100vh; height: 100dvh;
+
+    /* ---------------- TRANG CHỦ (MENU) ---------------- */
+    #home-screen {
+        position: fixed; inset: 0; z-index: 2000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: radial-gradient(circle at center, #1c2541 0%, #0b132b 100%);
+        background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+    }
+    .home-panel {
+        background: rgba(11, 19, 43, 0.9); padding: 30px 20px; border-radius: 15px; 
+        border: 2px solid var(--accent-blue); box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+        max-width: 350px; width: 90%;
+    }
+    .home-title { font-size: 28px; color: var(--accent-blue); text-shadow: 0 0 15px var(--accent-blue); margin-bottom: 5px; margin-top: 0; }
+    .home-subtitle { font-size: 13px; color: #a1a1aa; margin-bottom: 25px; }
+    .home-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+    .home-code { font-size: 24px; letter-spacing: 5px; color: var(--accent-green); font-weight: bold; margin: 10px 0; }
+    .home-input {
+        width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--accent-blue);
+        background: rgba(0,0,0,0.5); color: white; text-align: center; letter-spacing: 3px;
+        font-size: 18px; text-transform: uppercase; margin-bottom: 10px; outline: none;
+    }
+    .btn-home {
+        width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold;
+        cursor: pointer; transition: 0.2s; background: linear-gradient(45deg, #11998e, #38ef7d); color: white;
+        margin-bottom: 10px;
+    }
+    .btn-home:active { transform: scale(0.95); }
+    .btn-home-secondary { background: linear-gradient(45deg, #8E2DE2, #4A00E0); }
+    
+    /* ---------------- KHU VỰC GAME ---------------- */
+    #game-ui {
+        display: none; padding: 4px; flex-direction: column; height: 100vh; height: 100dvh;
     }
     h1 { font-size: 16px; margin: 2px 0; color: var(--accent-blue); text-shadow: 0 0 10px var(--accent-blue); text-transform: uppercase; }
     h2 { font-size: 12px; margin: 2px 0; font-weight: normal; color: #a1a1aa; }
     h3 { font-size: 11px; margin: 1px 0; color: #f4f4f5; text-transform: uppercase; }
 
-    /* CONTAINERS */
     .header { 
         background: var(--panel-bg); backdrop-filter: blur(5px);
         padding: 6px; border-radius: 8px; margin-bottom: 3px; flex-shrink: 0;
         border: 1px solid rgba(0, 210, 255, 0.2);
-    }
-    .header input {
-        padding: 7px; border-radius: 5px; border: 1px solid var(--accent-blue); width: 120px;
-        text-align: center; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;
-        background: rgba(0,0,0,0.5); color: white;
     }
     button {
         padding: 6px 12px; margin: 2px; border-radius: 5px; border: none;
@@ -52,11 +74,9 @@
     button:active { transform: scale(0.95); }
     button:disabled { background: #555; color: #888; cursor: not-allowed; opacity: 0.6; transform: none; }
     
-    #btn-connect { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; }
     #btn-airstrike { background: linear-gradient(45deg, #f12711, #f5af19); color: white; }
     #btn-airstrike.active { box-shadow: 0 0 15px #f12711; transform: scale(1.05); }
     #btn-cam-mic { background: linear-gradient(45deg, #8E2DE2, #4A00E0); color: white; }
-    #my-room-code { font-size: 16px; letter-spacing: 4px; background: rgba(0,0,0,0.6); padding: 3px 10px; border-radius: 6px; display: inline-block; color: var(--accent-blue); }
 
     .main-container {
         display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -81,7 +101,6 @@
     
     /* HÌNH ẢNH TÀU BẰNG CSS */
     .cell.ship { background-color: #5c6bc0; border: 1px solid #3f51b5; }
-    /* Đầu tàu bo tròn, thân vuông */
     .cell.ship.ship-end-top { border-radius: 50% 50% 0 0; background: linear-gradient(to bottom, #9fa8da, #3f51b5); }
     .cell.ship.ship-end-bottom { border-radius: 0 0 50% 50%; background: linear-gradient(to top, #9fa8da, #3f51b5); }
     .cell.ship.ship-end-left { border-radius: 50% 0 0 50%; background: linear-gradient(to right, #9fa8da, #3f51b5); }
@@ -89,15 +108,14 @@
     .cell.ship.ship-single { border-radius: 50%; background: radial-gradient(circle, #9fa8da, #3f51b5); }
     .cell.ship.ship-h-mid { background: #3f51b5; }
 
-    /* Hiệu ứng khi lướt tay đặt tàu */
     .cell.ship-preview { background: rgba(46, 204, 113, 0.6); }
     .cell.ship-preview-bad { background: rgba(231, 76, 60, 0.6); }
 
-    /* Hiệu ứng bắn Trúng / Trượt */
+    /* HIỆU ỨNG TRÚNG (Lửa) & TRƯỢT (Dấu X đỏ) */
     .cell.hit { background: radial-gradient(circle, #ff4b1f 0%, #ff9068 100%); pointer-events: none; animation: explode 0.3s ease-out; }
-    .cell.hit::after { content: "💥"; position: absolute; font-size: 70%; }
-    .cell.miss { background-color: rgba(255,255,255,0.2); pointer-events: none; }
-    .cell.miss::after { content: "💧"; position: absolute; font-size: 70%; opacity: 0.7; }
+    .cell.hit::after { content: "🔥"; position: absolute; font-size: 80%; }
+    .cell.miss { background-color: rgba(255,255,255,0.1); pointer-events: none; }
+    .cell.miss::after { content: "❌"; position: absolute; font-size: 80%; color: #ff4b1f; text-shadow: 0 0 5px rgba(255,0,0,0.5); }
     
     @keyframes explode { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
 
@@ -108,7 +126,7 @@
     .chat-input input { flex-grow: 1; padding: 6px; border-radius: 15px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none; padding-left: 10px; }
     .chat-input button { margin: 0; border-radius: 15px; background: var(--accent-blue); padding: 6px 12px; color: black; }
 
-    /* DANMAKU (TIN NHẮN CHẠY NGANG) */
+    /* DANMAKU */
     #danmaku-container {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         pointer-events: none; overflow: hidden; z-index: 100;
@@ -118,15 +136,11 @@
         text-shadow: 1px 1px 3px black, -1px -1px 3px black;
         animation: flyAcross 6s linear forwards;
     }
-    @keyframes flyAcross {
-        0% { transform: translateX(100vw); }
-        100% { transform: translateX(-150%); }
-    }
+    @keyframes flyAcross { 0% { transform: translateX(100vw); } 100% { transform: translateX(-150%); } }
 
-    /* CAMERA & MICRO PIP */
+    /* CAMERA PIP */
     #media-container {
-        position: absolute; top: 10px; right: 10px; z-index: 50;
-        display: flex; flex-direction: column; gap: 5px;
+        position: absolute; top: 10px; right: 10px; z-index: 50; display: flex; flex-direction: column; gap: 5px;
     }
     video {
         width: 80px; height: 120px; background: black; border-radius: 8px;
@@ -134,7 +148,7 @@
     }
     #local-video { transform: scaleX(-1); border-color: var(--accent-green); }
 
-    /* PANEL XẾP TÀU (Đã sửa lại để chạm thay vì kéo) */
+    /* PANEL XẾP TÀU */
     #setup-panel { background: var(--panel-bg); border-radius: 8px; padding: 5px; margin-bottom: 3px; flex-shrink: 0; display: none; }
     .ship-list { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin: 3px 0; }
     .ship-choice {
@@ -143,70 +157,107 @@
     }
     .ship-choice.selected { border-color: var(--accent-green); background: rgba(46, 204, 113, 0.3); box-shadow: 0 0 8px var(--accent-green); }
     .ship-choice.placed { background: #333; opacity: 0.4; pointer-events: none; }
+
+    /* ---------------- MODAL KẾT THÚC GAME ---------------- */
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000;
+        display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+    }
+    .modal-box {
+        background: var(--panel-bg); border: 2px solid var(--accent-blue);
+        padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 320px;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+    }
+    .modal-title { font-size: 26px; font-weight: bold; margin: 0 0 10px 0; }
+    .modal-desc { color: #ccc; font-size: 14px; margin-bottom: 20px; }
+    .modal-box button { width: 100%; padding: 12px; margin: 5px 0; font-size: 14px; border-radius: 8px; }
+    #btn-play-again { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; }
+    #btn-return-home { background: #333; color: white; border: 1px solid #555; }
 </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>🚢 HẢI CHIẾN PRO 💥</h1>
-    <h2 id="status-text">Đang chuẩn bị mạng...</h2>
+<!-- MÀN HÌNH CHÍNH (HOME) -->
+<div id="home-screen">
+    <div class="home-panel">
+        <h1 class="home-title">HẢI CHIẾN PRO</h1>
+        <div class="home-subtitle">Game đối kháng WebRTC</div>
+        
+        <div class="home-box">
+            <div style="font-size: 12px; color: #a1a1aa;">Mã phòng của bạn (Host):</div>
+            <div class="home-code" id="display-room-code">ĐANG TẠO...</div>
+            <div style="font-size: 11px; color: var(--accent-blue);">Gửi mã này cho bạn bè để họ tham gia!</div>
+        </div>
 
-    <div id="connection-box">
-        <p style="margin:3px 0;">Mã của bạn: <span id="my-room-code">----</span></p>
-        <div>
-            <input type="text" id="enemy-id-input" placeholder="Mã bạn bè" maxlength="4">
-            <button id="btn-connect">Kết nối</button>
+        <div style="margin: 20px 0; font-size: 14px; color: #fff;">HOẶC VÀO PHÒNG KHÁC</div>
+        
+        <input type="text" id="join-code-input" class="home-input" placeholder="NHẬP MÃ PHÒNG..." maxlength="4">
+        <button class="btn-home" id="btn-join-room">🚀 VÀO PHÒNG CHIẾN BÀN</button>
+        <button class="btn-home btn-home-secondary" id="btn-room-list" onclick="alert('Tính năng Danh Sách Phòng yêu cầu máy chủ trung tâm (Server). Phiên bản P2P hiện tại vui lòng dùng Mã Phòng để kết nối trực tiếp nhé!')">🌐 XEM PHÒNG HIỆN CÓ</button>
+    </div>
+</div>
+
+<!-- POPUP KẾT THÚC GAME -->
+<div class="modal-overlay" id="game-over-modal">
+    <div class="modal-box">
+        <h2 class="modal-title" id="go-title">CHIẾN THẮNG!</h2>
+        <div class="modal-desc" id="go-desc">Bạn đã tiêu diệt toàn bộ hạm đội địch.</div>
+        <button id="btn-play-again">Chơi lại (0/2)</button>
+        <button id="btn-return-home">🏠 Trở về Trang chủ</button>
+    </div>
+</div>
+
+<!-- KHU VỰC GAME -->
+<div id="game-ui">
+    <div class="header">
+        <div id="controls-box">
+            <span id="status-text" style="margin-right:10px; font-weight:bold; color:var(--accent-green);">Hãy xếp tàu!</span>
+            <button id="btn-random">🎲 Xếp ngẫu nhiên</button>
+            <button id="btn-manual">✋ Tự xếp tàu</button>
+            <button id="btn-ready" disabled>✅ Sẵn sàng</button>
+            <button id="btn-airstrike" style="display:none;">💣 Bom Rải Thảm</button>
+            <button id="btn-cam-mic">📹 Bật Cam/Mic</button>
         </div>
     </div>
 
-    <div id="controls-box" style="display: none; margin-top: 4px;">
-        <button id="btn-random">🎲 Xếp ngẫu nhiên</button>
-        <button id="btn-manual">✋ Tự xếp tàu</button>
-        <button id="btn-ready" disabled>✅ Sẵn sàng</button>
-        <button id="btn-airstrike" disabled>💣 Bom Rải Thảm</button>
-        <button id="btn-cam-mic">📹 Bật Cam/Mic</button>
-    </div>
-</div>
-
-<div id="setup-panel">
-    <span style="font-size:11px; color:#ffd700;">HƯỚNG DẪN: Chạm để chọn tàu ở dưới, sau đó chạm vào Bàn Cờ để đặt.</span>
-    <div class="ship-list" id="ship-list"></div>
-    <button id="btn-rotate">🔄 Xoay hướng: <span id="rotate-label">Ngang</span></button>
-    <button id="btn-undo-ship" disabled>↩️ Xóa tàu vừa đặt</button>
-    <button id="btn-confirm-setup" disabled>✅ Xong</button>
-</div>
-
-<div class="main-container">
-    <!-- Khu vực hiển thị tin nhắn bay -->
-    <div id="danmaku-container"></div>
-    
-    <!-- PIP Camera -->
-    <div id="media-container" style="display: none;">
-        <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay playsinline muted></video>
+    <div id="setup-panel">
+        <span style="font-size:11px; color:#ffd700;">Chạm chọn tàu, sau đó chạm vào Bàn Cờ để đặt.</span>
+        <div class="ship-list" id="ship-list"></div>
+        <button id="btn-rotate">🔄 Xoay hướng: <span id="rotate-label">Ngang</span></button>
+        <button id="btn-undo-ship" disabled>↩️ Xóa tàu</button>
+        <button id="btn-confirm-setup" disabled>✅ Xong</button>
     </div>
 
-    <div class="board-section">
-        <h3>🎯 Vùng biển Địch</h3>
-        <div id="enemy-board" class="board"></div>
-        <div class="hp-bar" id="enemy-hp"></div>
-    </div>
+    <div class="main-container">
+        <div id="danmaku-container"></div>
+        
+        <div id="media-container" style="display: none;">
+            <video id="remote-video" autoplay playsinline></video>
+            <video id="local-video" autoplay playsinline muted></video>
+        </div>
 
-    <div class="chat-input">
-        <input type="text" id="chat-input" placeholder="Nhập tin nhắn để châm chọc...">
-        <button onclick="sendChat()">Gửi</button>
-    </div>
+        <div class="board-section">
+            <h3>🎯 Vùng biển Địch</h3>
+            <div id="enemy-board" class="board"></div>
+            <div class="hp-bar" id="enemy-hp"></div>
+        </div>
 
-    <div class="board-section">
-        <h3>🛡️ Vùng biển của Bạn</h3>
-        <div id="my-board" class="board"></div>
-        <div class="hp-bar" id="my-hp"></div>
+        <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Nhập tin nhắn...">
+            <button onclick="sendChat()">Gửi</button>
+        </div>
+
+        <div class="board-section">
+            <h3>🛡️ Vùng biển của Bạn</h3>
+            <div id="my-board" class="board"></div>
+            <div class="hp-bar" id="my-hp"></div>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- KHỞI TẠO PEERJS & KẾT NỐI ---
-    const ROOM_PREFIX = "hc-pro-";
+    // --- KHỞI TẠO PEERJS & MÃ PHÒNG ---
+    const ROOM_PREFIX = "hc-pro-v2-";
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     function generateRoomCode() {
         let code = "";
@@ -215,31 +266,30 @@
     }
 
     let myRoomCode = generateRoomCode();
-    let peer = null;
-    let conn = null;
-    let mediaCall = null;
-    let localStream = null;
+    let peer = null, conn = null, mediaCall = null, localStream = null;
+    let isHost = false;
+
+    // Trạng thái chơi lại
+    let playAgainMyState = false;
+    let playAgainEnemyState = false;
 
     function initPeer() {
         peer = new Peer(ROOM_PREFIX + myRoomCode);
         peer.on('open', () => {
-            document.getElementById('my-room-code').innerText = myRoomCode;
-            document.getElementById('status-text').innerText = "Chờ bạn bè nhập mã...";
+            document.getElementById('display-room-code').innerText = myRoomCode;
         });
         
-        // Nhận kết nối data
         peer.on('connection', (connection) => {
-            if (conn && conn.open) return; // Chỉ nhận 1 người
+            if (conn && conn.open) return;
             conn = connection;
             isHost = true;
+            startGameUI();
             setupConnection();
         });
 
-        // Nhận cuộc gọi Video/Audio
         peer.on('call', (call) => {
             if (!localStream) {
-                // Nếu chưa bật cam/mic, báo người dùng
-                spawnDanmaku("Đối thủ đang gọi Video. Hãy bật Cam/Mic để phản hồi!", false);
+                spawnDanmaku("Đối thủ gọi Video! Hãy bật Cam/Mic.", false);
                 return;
             }
             call.answer(localStream);
@@ -251,9 +301,61 @@
 
         peer.on('error', (err) => {
             if (err.type === 'unavailable-id') { myRoomCode = generateRoomCode(); initPeer(); }
+            else if (err.type === 'peer-unavailable') {
+                alert("Không tìm thấy mã phòng này!");
+                document.getElementById('btn-join-room').innerText = "🚀 VÀO PHÒNG CHIẾN BÀN";
+                document.getElementById('btn-join-room').disabled = false;
+            }
         });
     }
     initPeer();
+
+    // --- HOME MENU NÚT VÀO PHÒNG ---
+    document.getElementById('btn-join-room').addEventListener('click', () => {
+        const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+        if (code.length < 4) { alert("Nhập mã 4 ký tự!"); return; }
+        
+        const btn = document.getElementById('btn-join-room');
+        btn.innerText = "ĐANG KẾT NỐI...";
+        btn.disabled = true;
+
+        conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
+        isHost = false;
+        
+        // Timeout chờ kết nối
+        setTimeout(() => { 
+            if (!conn.open) {
+                btn.innerText = "🚀 VÀO PHÒNG CHIẾN BÀN";
+                btn.disabled = false;
+            } 
+        }, 5000);
+        
+        setupConnection();
+    });
+
+    function startGameUI() {
+        document.getElementById('home-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        setTimeout(resizeBoards, 100);
+    }
+
+    function setupConnection() {
+        conn.on('open', () => {
+            if(!isHost) startGameUI();
+            spawnDanmaku("Đã kết nối thành công!", true);
+        });
+        conn.on('data', (data) => {
+            if (data.type === 'chat') spawnDanmaku(data.text, false);
+            else if (data.type === 'ready') { enemyReady = true; checkGameStart(); }
+            else if (data.type === 'fire') handleIncomingFire(data);
+            else if (data.type === 'fire-result') handleFireResult(data);
+            else if (data.type === 'play-again') handleEnemyPlayAgain();
+        });
+        conn.on('close', () => {
+            alert("Đối thủ đã thoát phòng!");
+            location.reload();
+        });
+    }
 
     // --- BIẾN TRẠNG THÁI GAME ---
     const myBoardEl = document.getElementById('my-board');
@@ -261,7 +363,7 @@
     const statusText = document.getElementById('status-text');
     let myShips = new Array(100).fill(0);
     let enemyHpRemaining = 17, myHpRemaining = 17;
-    let isHost = false, enemyReady = false, myReady = false, myTurn = false, gameStarted = false;
+    let enemyReady = false, myReady = false, myTurn = false, gameStarted = false;
     let hasAirstrike = true, airstrikeMode = false;
 
     // --- TẠO BÀN CỜ & RESPONSIVE ---
@@ -272,7 +374,6 @@
             cell.classList.add('cell');
             cell.dataset.idx = i;
             if (isEnemy) cell.addEventListener('click', () => fireAt(i));
-            // Sự kiện cho lúc xếp tàu (bàn cờ của mình)
             if (!isEnemy) {
                 cell.addEventListener('click', () => placeShipAt(i));
                 cell.addEventListener('mouseenter', () => showPreview(i));
@@ -286,6 +387,7 @@
 
     function resizeBoards() {
         const boardSections = document.querySelectorAll('.board-section');
+        if(boardSections.length === 0 || boardSections[0].clientWidth === 0) return;
         const sectionWidth = boardSections[0].clientWidth - 8;
         let minHeight = Infinity;
         boardSections.forEach(sec => {
@@ -298,36 +400,8 @@
         document.querySelectorAll('.board').forEach(b => { b.style.width = size + 'px'; b.style.height = size + 'px'; });
     }
     window.addEventListener('resize', resizeBoards);
-    setTimeout(resizeBoards, 100);
 
-    // --- NÚT KẾT NỐI ---
-    document.getElementById('btn-connect').addEventListener('click', () => {
-        const code = document.getElementById('enemy-id-input').value.trim().toUpperCase();
-        if (code.length < 4) { alert("Nhập mã 4 ký tự!"); return; }
-        document.getElementById('btn-connect').innerText = "Đang nối...";
-        conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
-        isHost = false;
-        setTimeout(() => { if (!conn.open) document.getElementById('btn-connect').innerText = "Thử lại"; }, 5000);
-        setupConnection();
-    });
-
-    function setupConnection() {
-        conn.on('open', () => {
-            document.getElementById('connection-box').style.display = 'none';
-            document.getElementById('controls-box').style.display = 'block';
-            statusText.innerText = "Đã kết nối! Hãy xếp tàu.";
-            spawnDanmaku("Đã kết nối thành công!", true);
-            setTimeout(resizeBoards, 50);
-        });
-        conn.on('data', (data) => {
-            if (data.type === 'chat') spawnDanmaku(data.text, false);
-            else if (data.type === 'ready') { enemyReady = true; checkGameStart(); }
-            else if (data.type === 'fire') handleIncomingFire(data);
-            else if (data.type === 'fire-result') handleFireResult(data);
-        });
-    }
-
-    // --- CHAT DANMAKU ---
+    // --- DANMAKU & MEDIA ---
     function sendChat() {
         const input = document.getElementById('chat-input');
         const text = input.value.trim();
@@ -343,39 +417,29 @@
         el.className = 'danmaku-msg';
         el.innerText = text;
         el.style.color = isMe ? 'var(--accent-blue)' : '#ff4b1f';
-        el.style.top = Math.floor(Math.random() * 60 + 10) + '%'; // Hiện ngẫu nhiên theo chiều dọc
+        el.style.top = Math.floor(Math.random() * 60 + 10) + '%';
         container.appendChild(el);
-        setTimeout(() => el.remove(), 6000); // Xóa sau khi chạy xong animation
+        setTimeout(() => el.remove(), 6000);
     }
 
-    // --- WEBRTC CAMERA & MICRO ---
     document.getElementById('btn-cam-mic').addEventListener('click', async () => {
         const btn = document.getElementById('btn-cam-mic');
         if (!localStream) {
             try {
-                // Tối ưu độ phân giải thấp cho máy RAM ít
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 320, height: 240, frameRate: 15 }, 
-                    audio: true 
-                });
+                localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, frameRate: 15 }, audio: true });
                 document.getElementById('media-container').style.display = 'flex';
                 document.getElementById('local-video').srcObject = localStream;
                 btn.innerText = "🛑 Tắt Cam/Mic";
                 
-                // Giao tiếp với đối phương nếu đã kết nối
                 if (conn && conn.open) {
-                    const peerIdToCall = isHost ? conn.peer : conn.peer; 
-                    mediaCall = peer.call(peerIdToCall, localStream);
+                    mediaCall = peer.call(conn.peer, localStream);
                     mediaCall.on('stream', (remoteStream) => {
                         document.getElementById('remote-video').srcObject = remoteStream;
                     });
                 }
-            } catch (err) {
-                alert("Không thể mở Camera/Micro. Vui lòng cấp quyền trình duyệt.");
-            }
+            } catch (err) { alert("Không thể mở Camera/Micro!"); }
         } else {
-            // Tắt stream
-            localStream.getTracks().forEach(track => track.stop());
+            localStream.getTracks().forEach(t => t.stop());
             localStream = null;
             document.getElementById('media-container').style.display = 'none';
             btn.innerText = "📹 Bật Cam/Mic";
@@ -383,12 +447,12 @@
         }
     });
 
-    // --- LOGIC XẾP TÀU (TAP TO PLACE) ---
+    // --- LOGIC XẾP TÀU ---
     const SHIP_LENGTHS = [5, 4, 3, 3, 2];
     let manualMode = false, isHorizontal = true, selectedShipIndex = null, placedShips = [];
     
     document.getElementById('btn-random').addEventListener('click', () => {
-        resetBoardState();
+        resetBoardStateUI();
         document.getElementById('setup-panel').style.display = 'none';
         SHIP_LENGTHS.forEach(len => {
             let placed = false;
@@ -408,7 +472,7 @@
     });
 
     document.getElementById('btn-manual').addEventListener('click', () => {
-        resetBoardState();
+        resetBoardStateUI();
         manualMode = true; isHorizontal = true; selectedShipIndex = null;
         document.getElementById('setup-panel').style.display = 'block';
         renderShipList();
@@ -464,7 +528,7 @@
         if (!manualMode || selectedShipIndex === null) return;
         const len = SHIP_LENGTHS[selectedShipIndex];
         const cells = getPreviewCells(idx, len, isHorizontal);
-        if (!cells || cells.some(c => myShips[c] !== 0)) return; // Bị vướng
+        if (!cells || cells.some(c => myShips[c] !== 0)) return;
 
         cells.forEach(c => { myShips[c] = 1; myBoardEl.children[c].classList.add('ship'); });
         placedShips.push({ length: len, index: selectedShipIndex, cells });
@@ -497,7 +561,7 @@
         document.getElementById('btn-ready').disabled = false;
     });
 
-    function resetBoardState() {
+    function resetBoardStateUI() {
         myShips.fill(0); placedShips = [];
         Array.from(myBoardEl.children).forEach(c => c.className = 'cell');
         document.getElementById('btn-ready').disabled = true;
@@ -517,7 +581,7 @@
         }
     }
 
-    // --- LOGIC GAMEPLAY (Bắn phá) ---
+    // --- LOGIC GAMEPLAY ---
     document.getElementById('btn-ready').addEventListener('click', () => {
         myReady = true;
         document.getElementById('btn-random').style.display = 'none';
@@ -531,7 +595,11 @@
     function checkGameStart() {
         if (myReady && enemyReady) {
             gameStarted = true; myTurn = isHost;
+            document.getElementById('btn-airstrike').style.display = 'inline-block';
             document.getElementById('btn-airstrike').disabled = false;
+            hasAirstrike = true; airstrikeMode = false;
+            document.getElementById('btn-airstrike').innerText = "💣 Bom Rải Thảm";
+            document.getElementById('btn-airstrike').classList.remove('active');
             updateTurnUI();
         }
     }
@@ -582,7 +650,7 @@
         const gameOver = myHpRemaining <= 0;
         conn.send({ type: 'fire-result', hits, misses, gameOver });
 
-        if (gameOver) { statusText.innerText = "BẠN ĐÃ BỊ TIÊU DIỆT! 💥"; gameStarted = false; } 
+        if (gameOver) { gameStarted = false; showGameOverModal(false); } 
         else { myTurn = true; updateTurnUI(); }
     }
 
@@ -592,10 +660,90 @@
         if (data.hits.length > 0) enemyHpRemaining -= data.hits.length;
         document.getElementById('enemy-hp').innerText = `Sinh lực địch: ${enemyHpRemaining}/17`;
 
-        if (data.gameOver) { statusText.innerText = "CHIẾN THẮNG! 🏆"; spawnDanmaku("BẠN ĐÃ THẮNG!", true); gameStarted = false; } 
+        if (data.gameOver) { gameStarted = false; showGameOverModal(true); } 
         else { myTurn = false; updateTurnUI(); }
     }
-    
+
+    // --- GAME OVER MODAL & RESET GAME ---
+    function showGameOverModal(isWin) {
+        const modal = document.getElementById('game-over-modal');
+        const title = document.getElementById('go-title');
+        const desc = document.getElementById('go-desc');
+        
+        title.innerText = isWin ? "🏆 CHIẾN THẮNG!" : "💥 THẤT BẠI!";
+        title.style.color = isWin ? "var(--accent-green)" : "var(--accent-red)";
+        desc.innerText = isWin ? "Bạn đã tiêu diệt toàn bộ hạm đội địch." : "Hạm đội của bạn đã bị phá hủy hoàn toàn.";
+        
+        playAgainMyState = false;
+        playAgainEnemyState = false;
+        updatePlayAgainBtnUI();
+        
+        modal.style.display = 'flex';
+    }
+
+    document.getElementById('btn-play-again').addEventListener('click', () => {
+        if (playAgainMyState) return;
+        playAgainMyState = true;
+        conn.send({ type: 'play-again' });
+        updatePlayAgainBtnUI();
+        checkBothPlayAgain();
+    });
+
+    document.getElementById('btn-return-home').addEventListener('click', () => {
+        location.reload(); // Cách tốt nhất để giải phóng RAM triệt để cho máy Android/iOS
+    });
+
+    function handleEnemyPlayAgain() {
+        playAgainEnemyState = true;
+        updatePlayAgainBtnUI();
+        checkBothPlayAgain();
+    }
+
+    function updatePlayAgainBtnUI() {
+        const btn = document.getElementById('btn-play-again');
+        const total = (playAgainMyState ? 1 : 0) + (playAgainEnemyState ? 1 : 0);
+        
+        if (playAgainMyState && !playAgainEnemyState) {
+            btn.innerText = `Đang chờ bạn bè... (1/2)`;
+            btn.style.background = "#e67e22";
+        } else {
+            btn.innerText = `Chơi lại (${total}/2)`;
+            btn.style.background = "linear-gradient(45deg, #11998e, #38ef7d)";
+        }
+    }
+
+    function checkBothPlayAgain() {
+        if (playAgainMyState && playAgainEnemyState) {
+            document.getElementById('game-over-modal').style.display = 'none';
+            hardResetBoardForNewGame();
+        }
+    }
+
+    function hardResetBoardForNewGame() {
+        // Reset Biến
+        myShips.fill(0);
+        enemyHpRemaining = 17; myHpRemaining = 17;
+        myReady = false; enemyReady = false; gameStarted = false; myTurn = false;
+        
+        // Reset Bàn cờ địch
+        Array.from(enemyBoardEl.children).forEach(c => c.className = 'cell');
+        
+        // Reset Bàn cờ ta
+        resetBoardStateUI();
+        
+        // Cập nhật UI
+        document.getElementById('my-hp').innerText = `Tàu còn lại: 17/17`;
+        document.getElementById('enemy-hp').innerText = `Sinh lực địch: 17/17`;
+        document.getElementById('btn-random').style.display = 'inline-block';
+        document.getElementById('btn-manual').style.display = 'inline-block';
+        document.getElementById('btn-ready').style.display = 'inline-block';
+        document.getElementById('btn-airstrike').style.display = 'none';
+        
+        statusText.innerText = "Ván mới! Hãy xếp tàu.";
+        statusText.style.color = "var(--accent-green)";
+        spawnDanmaku("Trận tái đấu bắt đầu! Hãy xếp tàu.", true);
+    }
+
     document.getElementById('my-hp').innerText = `Tàu còn lại: 17/17`;
     document.getElementById('enemy-hp').innerText = `Sinh lực địch: 17/17`;
 </script>
