@@ -30,6 +30,7 @@
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         background: radial-gradient(circle at center, #1c2541 0%, #0b132b 100%);
         background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+        overflow-y: auto; padding: 20px 0;
     }
     .home-panel {
         background: rgba(11, 19, 43, 0.9); padding: 30px 20px; border-radius: 15px; 
@@ -52,6 +53,23 @@
     }
     .btn-home:active { transform: scale(0.95); }
     .btn-home-secondary { background: linear-gradient(45deg, #8E2DE2, #4A00E0); }
+    .btn-home-tertiary { background: linear-gradient(45deg, #ff9a44, #ff4b1f); }
+
+    /* PANEL DANH SÁCH PHÒNG GẦN ĐÂY */
+    #recent-rooms-panel { display: none; margin-top: 15px; text-align: left; }
+    .recent-room-item {
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(0,210,255,0.3);
+        border-radius: 8px; padding: 10px; margin-bottom: 8px;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .recent-room-info { text-align: left; }
+    .recent-room-code { font-weight: bold; color: var(--accent-green); font-size: 15px; letter-spacing: 2px; }
+    .recent-room-time { font-size: 10px; color: #a1a1aa; }
+    .recent-room-btn {
+        padding: 8px 10px; border-radius: 6px; border: none; font-size: 11px; font-weight: bold;
+        cursor: pointer; background: linear-gradient(45deg, #00d2ff, #3a7bd5); color: white; white-space: nowrap;
+    }
+    .recent-room-empty { font-size: 12px; color: #a1a1aa; text-align: center; padding: 10px 0; }
     
     /* ---------------- KHU VỰC GAME ---------------- */
     #game-ui {
@@ -173,27 +191,85 @@
     .modal-box button { width: 100%; padding: 12px; margin: 5px 0; font-size: 14px; border-radius: 8px; }
     #btn-play-again { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; }
     #btn-return-home { background: #333; color: white; border: 1px solid #555; }
+
+    /* MODAL NGẮT KẾT NỐI */
+    #disconnect-modal .modal-box { border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 75, 31, 0.4); }
+    .wait-options { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; }
+    .wait-option {
+        flex: 1 1 40%; padding: 10px 6px; border-radius: 8px; border: 1px solid var(--accent-blue);
+        background: rgba(0,0,0,0.4); color: white; font-size: 13px; font-weight: bold; cursor: pointer;
+    }
+    .wait-option.selected { background: var(--accent-blue); color: black; }
+    #disconnect-countdown { font-size: 32px; font-weight: bold; color: var(--accent-red); margin: 10px 0; }
+    #reconnect-waiting-box { display: none; }
+    #reconnect-choose-box { display: block; }
+
+    /* THÔNG BÁO (TOAST) TÙY CHỈNH */
+    #toast-container {
+        position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+        z-index: 5000; display: flex; flex-direction: column; gap: 8px;
+        align-items: center; width: 90%; max-width: 380px; pointer-events: none;
+    }
+    .toast {
+        background: rgba(17, 24, 46, 0.97); border: 1px solid var(--accent-blue);
+        border-left: 4px solid var(--accent-blue); border-radius: 10px;
+        padding: 12px 16px; font-size: 13px; font-weight: 600; color: white;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4); text-align: left;
+        display: flex; align-items: center; gap: 10px;
+        animation: toastIn 0.25s ease-out;
+        width: 100%;
+    }
+    .toast.success { border-left-color: var(--accent-green); }
+    .toast.error { border-left-color: var(--accent-red); }
+    .toast.info { border-left-color: var(--accent-blue); }
+    .toast-icon { font-size: 18px; flex-shrink: 0; }
+    .toast.hide { animation: toastOut 0.25s ease-in forwards; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-15px); } }
+
+    /* HỘP XÁC NHẬN TÙY CHỈNH (thay cho confirm/prompt của trình duyệt) */
+    #confirm-modal .modal-box { max-width: 300px; }
+    #confirm-modal .modal-box button { display: inline-block; width: 48%; margin: 5px 1%; }
 </style>
 </head>
 <body>
+
+<!-- THÔNG BÁO -->
+<div id="toast-container"></div>
 
 <!-- MÀN HÌNH CHÍNH (HOME) -->
 <div id="home-screen">
     <div class="home-panel">
         <h1 class="home-title">HẢI CHIẾN PRO</h1>
-        <div class="home-subtitle">Game đối kháng WebRTC</div>
+        <div class="home-subtitle">Đấu trí trên biển cùng bạn bè</div>
         
         <div class="home-box">
-            <div style="font-size: 12px; color: #a1a1aa;">Mã phòng của bạn (Host):</div>
+            <div style="font-size: 12px; color: #a1a1aa;">Phòng của bạn:</div>
             <div class="home-code" id="display-room-code">ĐANG TẠO...</div>
-            <div style="font-size: 11px; color: var(--accent-blue);">Gửi mã này cho bạn bè để họ tham gia!</div>
+            <div style="font-size: 11px; color: var(--accent-blue);">Gửi mã này cho bạn bè để cùng chơi!</div>
         </div>
 
         <div style="margin: 20px 0; font-size: 14px; color: #fff;">HOẶC VÀO PHÒNG KHÁC</div>
         
         <input type="text" id="join-code-input" class="home-input" placeholder="NHẬP MÃ PHÒNG..." maxlength="4">
-        <button class="btn-home" id="btn-join-room">🚀 VÀO PHÒNG CHIẾN BÀN</button>
-        <button class="btn-home btn-home-secondary" id="btn-room-list" onclick="alert('Tính năng Danh Sách Phòng yêu cầu máy chủ trung tâm (Server). Phiên bản P2P hiện tại vui lòng dùng Mã Phòng để kết nối trực tiếp nhé!')">🌐 XEM PHÒNG HIỆN CÓ</button>
+        <button class="btn-home" id="btn-join-room">🚀 VÀO PHÒNG</button>
+        <button class="btn-home btn-home-tertiary" id="btn-show-recent">🔄 CHƠI LẠI PHÒNG CŨ</button>
+        <button class="btn-home btn-home-secondary" id="btn-room-list">🌐 PHÒNG ĐANG MỞ</button>
+
+        <div id="recent-rooms-panel">
+            <div style="font-size:13px; color:#ffd700; margin-bottom:8px;" id="recent-rooms-title">📜 Phòng chơi gần đây</div>
+            <div id="recent-rooms-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- HỘP XÁC NHẬN TÙY CHỈNH -->
+<div class="modal-overlay" id="confirm-modal">
+    <div class="modal-box">
+        <h2 class="modal-title" id="confirm-title" style="font-size:20px; color: var(--accent-blue);">Xác nhận</h2>
+        <div class="modal-desc" id="confirm-desc">Bạn có chắc chắn không?</div>
+        <button id="confirm-ok-btn" style="background: linear-gradient(45deg, #11998e, #38ef7d); color:white;">Đồng ý</button>
+        <button id="confirm-cancel-btn" style="background:#333; color:white; border:1px solid #555;">Hủy</button>
     </div>
 </div>
 
@@ -204,6 +280,31 @@
         <div class="modal-desc" id="go-desc">Bạn đã tiêu diệt toàn bộ hạm đội địch.</div>
         <button id="btn-play-again">Chơi lại (0/2)</button>
         <button id="btn-return-home">🏠 Trở về Trang chủ</button>
+    </div>
+</div>
+
+<!-- POPUP NGẮT KẾT NỐI -->
+<div class="modal-overlay" id="disconnect-modal">
+    <div class="modal-box">
+        <h2 class="modal-title" style="color: var(--accent-red);">⚠️ ĐỐI THỦ ĐÃ RỜI TRẬN</h2>
+        <div class="modal-desc">Đối thủ vừa thoát khỏi trận đấu.</div>
+
+        <div id="reconnect-choose-box">
+            <div style="font-size:13px; color:#ffd700; margin-bottom:10px;">Chọn thời gian chờ đối thủ quay lại:</div>
+            <div class="wait-options">
+                <button class="wait-option" data-secs="30">30 giây</button>
+                <button class="wait-option" data-secs="60">1 phút</button>
+                <button class="wait-option" data-secs="90">1 phút 30</button>
+                <button class="wait-option" data-secs="120">2 phút</button>
+            </div>
+        </div>
+
+        <div id="reconnect-waiting-box">
+            <div style="font-size:13px; color:#ccc;">Đang chờ đối thủ quay lại trận...</div>
+            <div id="disconnect-countdown">00:30</div>
+        </div>
+
+        <button id="btn-cancel-wait" style="background:#333; color:white; border:1px solid #555;">🏠 Thoát về Trang chủ</button>
     </div>
 </div>
 
@@ -256,9 +357,13 @@
 </div>
 
 <script>
-    // --- KHỞI TẠO PEERJS & MÃ PHÒNG ---
+    // =====================================================================
+    // KHỞI TẠO PHÒNG CHƠI
+    // =====================================================================
     const ROOM_PREFIX = "hc-pro-v2-";
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const RECENT_ROOMS_KEY = "hc-pro-recent-rooms";
+
     function generateRoomCode() {
         let code = "";
         for (let i = 0; i < 4; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
@@ -268,22 +373,36 @@
     let myRoomCode = generateRoomCode();
     let peer = null, conn = null, mediaCall = null, localStream = null;
     let isHost = false;
+    let currentPeerRoomCode = null; // mã phòng của đối phương mà ta đang kết nối tới (dùng để lưu lịch sử + reconnect)
 
     // Trạng thái chơi lại
     let playAgainMyState = false;
     let playAgainEnemyState = false;
 
-    function initPeer() {
+    // Trạng thái ngắt kết nối / chờ hồi phục
+    let disconnectTimerInterval = null;
+    let disconnectDeadline = null;
+    let hasIntentionallyLeft = false; // tránh show popup khi tự thoát bằng nút "Trở về trang chủ"
+
+    function initPeer(preferredCode) {
+        if (preferredCode) myRoomCode = preferredCode;
         peer = new Peer(ROOM_PREFIX + myRoomCode);
+
         peer.on('open', () => {
             document.getElementById('display-room-code').innerText = myRoomCode;
         });
-        
+
         peer.on('connection', (connection) => {
-            if (conn && conn.open) return;
+            // Bỏ qua các lượt "gõ cửa dò thử" từ tính năng kiểm tra phòng đang mở
+            const isProbe = connection.metadata && connection.metadata.probe === true;
+            if (isProbe) {
+                connection.on('open', () => setTimeout(() => connection.close(), 100));
+                return;
+            }
+            // Nếu đã có kết nối đang mở, từ chối kết nối mới để tránh xung đột
+            if (conn && conn.open) { connection.close(); return; }
             conn = connection;
             isHost = true;
-            startGameUI();
             setupConnection();
         });
 
@@ -300,50 +419,91 @@
         });
 
         peer.on('error', (err) => {
-            if (err.type === 'unavailable-id') { myRoomCode = generateRoomCode(); initPeer(); }
-            else if (err.type === 'peer-unavailable') {
-                alert("Không tìm thấy mã phòng này!");
-                document.getElementById('btn-join-room').innerText = "🚀 VÀO PHÒNG CHIẾN BÀN";
-                document.getElementById('btn-join-room').disabled = false;
+            if (err.type === 'unavailable-id') {
+                // Mã phòng đã bị chiếm (thường do chính mình host trước đó) -> tạo mã mới, TRỪ khi
+                // đang thử phục hồi lại đúng phòng cũ, trong trường hợp đó thử lại sau một chút.
+                myRoomCode = generateRoomCode();
+                initPeer();
+            } else if (err.type === 'peer-unavailable') {
+                showToast("Không tìm thấy phòng này! Có thể phòng đã đóng.", "error");
+                resetJoinButton();
+            } else {
+                console.warn("Lỗi:", err.type, err);
             }
+        });
+
+        peer.on('disconnected', () => {
+            // Mất tín hiệu tạm thời — thử khôi phục để vẫn sẵn sàng nhận người chơi khác vào
+            setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 1000);
         });
     }
     initPeer();
 
+    function resetJoinButton() {
+        const btn = document.getElementById('btn-join-room');
+        btn.innerText = "🚀 VÀO PHÒNG";
+        btn.disabled = false;
+    }
+
     // --- HOME MENU NÚT VÀO PHÒNG ---
     document.getElementById('btn-join-room').addEventListener('click', () => {
         const code = document.getElementById('join-code-input').value.trim().toUpperCase();
-        if (code.length < 4) { alert("Nhập mã 4 ký tự!"); return; }
-        
+        if (code.length < 4) { showToast("Nhập mã phòng gồm 4 ký tự!", "error"); return; }
+        joinRoom(code);
+    });
+
+    function joinRoom(code) {
         const btn = document.getElementById('btn-join-room');
-        btn.innerText = "ĐANG KẾT NỐI...";
+        btn.innerText = "ĐANG VÀO PHÒNG...";
         btn.disabled = true;
 
+        currentPeerRoomCode = code;
         conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
         isHost = false;
-        
-        // Timeout chờ kết nối
-        setTimeout(() => { 
-            if (!conn.open) {
-                btn.innerText = "🚀 VÀO PHÒNG CHIẾN BÀN";
-                btn.disabled = false;
-            } 
-        }, 5000);
-        
+
+        // Thời gian chờ tối đa khi vào phòng
+        setTimeout(() => {
+            if (!conn || !conn.open) {
+                resetJoinButton();
+            }
+        }, 6000);
+
         setupConnection();
-    });
+    }
 
     function startGameUI() {
         document.getElementById('home-screen').style.display = 'none';
         document.getElementById('game-ui').style.display = 'flex';
         setTimeout(resizeBoards, 100);
+        setTimeout(resizeBoards, 400);
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            if(!isHost) startGameUI();
-            spawnDanmaku("Đã kết nối thành công!", true);
+            hasIntentionallyLeft = false;
+            // Lưu vào lịch sử phòng gần đây (dùng mã phòng của ĐỐI PHƯƠNG để có thể reconnect vào peer id của họ)
+            const remoteCode = isHost ? myRoomCode : currentPeerRoomCode;
+            saveRecentRoom(remoteCode, isHost);
+
+            if (!isHost) currentPeerRoomCode = extractCodeFromPeerId(conn.peer);
+            else currentPeerRoomCode = myRoomCode;
+
+            // Phòng vừa có người vào, không còn "mở để vào" nữa -> cập nhật danh sách ngay
+            if (typeof announceMyRoomToDirectory === 'function') announceMyRoomToDirectory();
+
+            if (!gameStarted && !document.getElementById('game-ui').style.display.includes('flex')) {
+                startGameUI();
+            } else if (document.getElementById('game-ui').style.display !== 'flex') {
+                startGameUI();
+            }
+
+            // Nếu đang trong màn hình chờ đối thủ, đóng lại vì đã vào lại được
+            closeDisconnectModal();
+            spawnDanmaku("Đã vào phòng thành công!", true);
+            showToast("Đã vào phòng thành công!", "success");
+            resetJoinButton();
         });
+
         conn.on('data', (data) => {
             if (data.type === 'chat') spawnDanmaku(data.text, false);
             else if (data.type === 'ready') { enemyReady = true; checkGameStart(); }
@@ -351,13 +511,292 @@
             else if (data.type === 'fire-result') handleFireResult(data);
             else if (data.type === 'play-again') handleEnemyPlayAgain();
         });
+
         conn.on('close', () => {
-            alert("Đối thủ đã thoát phòng!");
-            location.reload();
+            handleDisconnection();
+        });
+
+        conn.on('error', (err) => {
+            console.warn("Connection error:", err);
         });
     }
 
-    // --- BIẾN TRẠNG THÁI GAME ---
+    function extractCodeFromPeerId(peerId) {
+        return peerId.replace(ROOM_PREFIX, '');
+    }
+
+    // =====================================================================
+    // LỊCH SỬ PHÒNG GẦN ĐÂY (localStorage) + KẾT NỐI LẠI TỪ TRANG CHỦ
+    // =====================================================================
+    const RECENT_ROOM_TTL_MS = 5 * 60 * 1000; // phòng gần đây hiển thị được tối đa 5 phút kể từ lần chơi cuối
+
+    function getRecentRooms() {
+        try {
+            const raw = localStorage.getItem(RECENT_ROOMS_KEY);
+            const list = raw ? JSON.parse(raw) : [];
+            const now = Date.now();
+            // Lọc bỏ phòng đã hết hạn hiển thị
+            return list.filter(r => (now - r.lastPlayed) < RECENT_ROOM_TTL_MS);
+        } catch (e) { return []; }
+    }
+
+    function saveRecentRoom(remoteCode, wasHost) {
+        if (!remoteCode) return;
+        let list = getRecentRooms();
+        list = list.filter(r => r.code !== remoteCode);
+        list.unshift({ code: remoteCode, lastPlayed: Date.now(), wasHost: wasHost });
+        list = list.slice(0, 8); // giữ tối đa 8 phòng gần nhất
+        localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list));
+    }
+
+    function removeRecentRoom(code) {
+        let list = getRecentRooms().filter(r => r.code !== code);
+        localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list));
+    }
+
+    function formatElapsed(ms) {
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        if (m > 0) return `${m} phút ${s} giây trước`;
+        return `${s} giây trước`;
+    }
+
+    function renderRecentRoomsList() {
+        const container = document.getElementById('recent-rooms-list');
+        const list = getRecentRooms();
+        container.innerHTML = '';
+
+        if (list.length === 0) {
+            container.innerHTML = '<div class="recent-room-empty">Chưa có phòng nào gần đây.</div>';
+            return;
+        }
+
+        list.forEach(r => {
+            const item = document.createElement('div');
+            item.className = 'recent-room-item';
+            const elapsed = Date.now() - r.lastPlayed;
+            item.innerHTML = `
+                <div class="recent-room-info">
+                    <div class="recent-room-code">${r.code}</div>
+                    <div class="recent-room-time">${formatElapsed(elapsed)}</div>
+                </div>
+                <button class="recent-room-btn">🔄 Kết nối lại</button>
+            `;
+            item.querySelector('.recent-room-btn').addEventListener('click', () => {
+                document.getElementById('recent-rooms-panel').style.display = 'none';
+                joinRoom(r.code);
+            });
+            container.appendChild(item);
+        });
+    }
+
+    document.getElementById('btn-show-recent').addEventListener('click', () => {
+        const panel = document.getElementById('recent-rooms-panel');
+        const isVisible = panel.style.display === 'block' && panel.dataset.mode === 'recent';
+        if (isVisible) { panel.style.display = 'none'; return; }
+        panel.dataset.mode = 'recent';
+        document.getElementById('recent-rooms-title').innerText = "📜 Phòng chơi gần đây";
+        renderRecentRoomsList();
+        panel.style.display = 'block';
+    });
+
+    // Tự làm mới danh sách mỗi 5 giây trong lúc đang mở, để tự loại bỏ phòng hết hạn
+    setInterval(() => {
+        const panel = document.getElementById('recent-rooms-panel');
+        if (panel.style.display === 'block' && panel.dataset.mode === 'recent') renderRecentRoomsList();
+    }, 5000);
+
+    // =====================================================================
+    // "PHÒNG ĐANG MỞ" — KHÔNG CẦN MÁY CHỦ TRUNG GIAN
+    // =====================================================================
+    // Cơ chế: người mở app đầu tiên sẽ tự động trở thành "Người giữ danh sách"
+    // (giữ một mã phòng đặc biệt cố định). Mọi người chơi khác sẽ tự động báo
+    // danh phòng của mình cho Người giữ danh sách, và xin danh sách khi cần.
+    // Nếu Người giữ danh sách thoát game, người kế tiếp phát hiện ra sẽ ngay
+    // lập tức thử chiếm lại vị trí đó — ai thử trước sẽ giữ được, không cần
+    // "bầu chọn" hay bất kỳ máy chủ riêng nào.
+
+    const DIRECTORY_ROOM_ID = ROOM_PREFIX + "directory-board";
+    let directoryPeer = null;          // dùng khi CHÍNH MÌNH là Người giữ danh sách
+    let directoryConn = null;          // dùng khi mình là khách, kết nối tới Người giữ danh sách
+    let isDirectoryHost = false;
+    let directoryEntries = new Map();  // roomCode -> { lastSeen } (chỉ có ý nghĩa khi mình là Người giữ)
+    let directoryRetryTimer = null;
+
+    function startDirectoryService() {
+        tryBecomeDirectoryHost();
+    }
+
+    function tryBecomeDirectoryHost() {
+        if (directoryRetryTimer) { clearTimeout(directoryRetryTimer); directoryRetryTimer = null; }
+
+        const candidate = new Peer(DIRECTORY_ROOM_ID);
+
+        candidate.on('open', () => {
+            // Chiếm được vị trí Người giữ danh sách
+            directoryPeer = candidate;
+            isDirectoryHost = true;
+            directoryEntries.clear();
+
+            directoryPeer.on('connection', (c) => {
+                c.on('data', (msg) => handleDirectoryMessageAsHost(c, msg));
+                c.on('close', () => {}); // không cần làm gì đặc biệt khi 1 khách rời
+            });
+
+            // Tự báo danh phòng của chính mình (nếu mình cũng đang mở phòng để chơi)
+            announceMyRoomToDirectory();
+        });
+
+        candidate.on('error', (err) => {
+            if (err.type === 'unavailable-id') {
+                // Đã có người giữ danh sách khác — mình sẽ làm khách của họ
+                candidate.destroy();
+                connectAsDirectoryGuest();
+            }
+        });
+    }
+
+    function connectAsDirectoryGuest() {
+        isDirectoryHost = false;
+        try {
+            directoryConn = peer.connect(DIRECTORY_ROOM_ID, { reliable: true });
+        } catch (e) { scheduleDirectoryRetry(); return; }
+
+        directoryConn.on('open', () => {
+            announceMyRoomToDirectory();
+        });
+
+        directoryConn.on('data', (msg) => {
+            if (msg && msg.action === 'room-list') {
+                renderOpenRoomsFromList(msg.rooms || []);
+            }
+        });
+
+        directoryConn.on('close', () => {
+            // Người giữ danh sách vừa thoát — thử chiếm lại vị trí ngay lập tức
+            directoryConn = null;
+            scheduleDirectoryRetry();
+        });
+
+        directoryConn.on('error', () => {
+            directoryConn = null;
+            scheduleDirectoryRetry();
+        });
+    }
+
+    function scheduleDirectoryRetry() {
+        if (directoryRetryTimer) return;
+        // Một chút độ trễ ngẫu nhiên để tránh mọi người cùng thử chiếm cùng 1 mili-giây
+        const delay = 200 + Math.floor(Math.random() * 500);
+        directoryRetryTimer = setTimeout(() => {
+            directoryRetryTimer = null;
+            tryBecomeDirectoryHost();
+        }, delay);
+    }
+
+    function handleDirectoryMessageAsHost(fromConn, msg) {
+        if (!msg) return;
+        if (msg.action === 'register') {
+            if (msg.roomCode) directoryEntries.set(msg.roomCode, { lastSeen: Date.now() });
+        } else if (msg.action === 'unregister') {
+            if (msg.roomCode) directoryEntries.delete(msg.roomCode);
+        } else if (msg.action === 'request-list') {
+            sendCurrentListTo(fromConn);
+        }
+    }
+
+    function sendCurrentListTo(targetConn) {
+        // Loại bỏ các phòng lâu không báo danh (coi như đã đóng)
+        const now = Date.now();
+        for (const [code, info] of directoryEntries.entries()) {
+            if (now - info.lastSeen > 10000) directoryEntries.delete(code);
+        }
+        const rooms = Array.from(directoryEntries.keys());
+        try { targetConn.send({ action: 'room-list', rooms }); } catch (e) {}
+    }
+
+    function announceMyRoomToDirectory() {
+        const isOpenForJoining = isHost && (!conn || !conn.open) && myRoomCode;
+        const payload = isOpenForJoining
+            ? { action: 'register', roomCode: myRoomCode }
+            : (myRoomCode ? { action: 'unregister', roomCode: myRoomCode } : null);
+        if (!payload) return;
+
+        if (isDirectoryHost) {
+            handleDirectoryMessageAsHost({ send: () => {} }, payload);
+        } else if (directoryConn && directoryConn.open) {
+            try { directoryConn.send(payload); } catch (e) {}
+        }
+    }
+
+    // Báo danh định kỳ, để danh sách luôn phản ánh đúng phòng nào còn mở
+    setInterval(announceMyRoomToDirectory, 4000);
+
+    function requestOpenRoomsList() {
+        if (isDirectoryHost) {
+            renderOpenRoomsFromList(Array.from(directoryEntries.keys()));
+        } else if (directoryConn && directoryConn.open) {
+            try { directoryConn.send({ action: 'request-list' }); } catch (e) {}
+        } else {
+            renderOpenRoomsFromList([]);
+        }
+    }
+
+    function renderOpenRoomsFromList(rooms) {
+        const panel = document.getElementById('recent-rooms-panel');
+        if (panel.dataset.mode !== 'open') return; // người dùng đã chuyển tab khác, bỏ qua kết quả trễ
+
+        const container = document.getElementById('recent-rooms-list');
+        const filtered = rooms.filter(code => code !== myRoomCode);
+
+        container.innerHTML = '';
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="recent-room-empty">Chưa có phòng nào đang mở lúc này.<br>Hãy chờ chút hoặc nhờ bạn gửi mã phòng nhé!</div>';
+            return;
+        }
+
+        filtered.forEach(code => {
+            const item = document.createElement('div');
+            item.className = 'recent-room-item';
+            item.innerHTML = `
+                <div class="recent-room-info">
+                    <div class="recent-room-code">${code}</div>
+                    <div class="recent-room-time" style="color: var(--accent-green);">● Đang mở</div>
+                </div>
+                <button class="recent-room-btn">🚀 Vào phòng</button>
+            `;
+            item.querySelector('.recent-room-btn').addEventListener('click', () => {
+                document.getElementById('recent-rooms-panel').style.display = 'none';
+                joinRoom(code);
+            });
+            container.appendChild(item);
+        });
+    }
+
+    startDirectoryService();
+
+    document.getElementById('btn-room-list').addEventListener('click', () => {
+        const panel = document.getElementById('recent-rooms-panel');
+        const isVisible = panel.style.display === 'block' && panel.dataset.mode === 'open';
+        if (isVisible) { panel.style.display = 'none'; return; }
+
+        panel.dataset.mode = 'open';
+        document.getElementById('recent-rooms-title').innerText = "🌐 Phòng đang mở";
+        document.getElementById('recent-rooms-list').innerHTML = '<div class="recent-room-empty">Đang tìm phòng đang mở...</div>';
+        panel.style.display = 'block';
+        requestOpenRoomsList();
+    });
+
+    // Làm mới danh sách mỗi vài giây trong lúc bảng đang mở
+    setInterval(() => {
+        const panel = document.getElementById('recent-rooms-panel');
+        if (panel.style.display === 'block' && panel.dataset.mode === 'open') requestOpenRoomsList();
+    }, 4000);
+
+    // =====================================================================
+    // BIẾN TRẠNG THÁI GAME
+    // =====================================================================
     const myBoardEl = document.getElementById('my-board');
     const enemyBoardEl = document.getElementById('enemy-board');
     const statusText = document.getElementById('status-text');
@@ -387,7 +826,7 @@
 
     function resizeBoards() {
         const boardSections = document.querySelectorAll('.board-section');
-        if(boardSections.length === 0 || boardSections[0].clientWidth === 0) return;
+        if (boardSections.length === 0 || boardSections[0].clientWidth === 0) return;
         const sectionWidth = boardSections[0].clientWidth - 8;
         let minHeight = Infinity;
         boardSections.forEach(sec => {
@@ -430,14 +869,14 @@
                 document.getElementById('media-container').style.display = 'flex';
                 document.getElementById('local-video').srcObject = localStream;
                 btn.innerText = "🛑 Tắt Cam/Mic";
-                
+
                 if (conn && conn.open) {
                     mediaCall = peer.call(conn.peer, localStream);
                     mediaCall.on('stream', (remoteStream) => {
                         document.getElementById('remote-video').srcObject = remoteStream;
                     });
                 }
-            } catch (err) { alert("Không thể mở Camera/Micro!"); }
+            } catch (err) { showToast("Không thể mở Camera/Micro!", "error"); }
         } else {
             localStream.getTracks().forEach(t => t.stop());
             localStream = null;
@@ -450,7 +889,7 @@
     // --- LOGIC XẾP TÀU ---
     const SHIP_LENGTHS = [5, 4, 3, 3, 2];
     let manualMode = false, isHorizontal = true, selectedShipIndex = null, placedShips = [];
-    
+
     document.getElementById('btn-random').addEventListener('click', () => {
         resetBoardStateUI();
         document.getElementById('setup-panel').style.display = 'none';
@@ -519,7 +958,7 @@
         const bad = cells.some(c => myShips[c] !== 0);
         cells.forEach(c => myBoardEl.children[c].classList.add(bad ? 'ship-preview-bad' : 'ship-preview'));
     }
-    
+
     function clearPreview() {
         Array.from(myBoardEl.children).forEach(c => c.classList.remove('ship-preview', 'ship-preview-bad'));
     }
@@ -532,7 +971,7 @@
 
         cells.forEach(c => { myShips[c] = 1; myBoardEl.children[c].classList.add('ship'); });
         placedShips.push({ length: len, index: selectedShipIndex, cells });
-        
+
         clearPreview();
         markAllShipShapes();
         syncShipListWithPlaced();
@@ -542,7 +981,7 @@
         const buttons = document.querySelectorAll('.ship-choice');
         buttons.forEach(b => b.classList.remove('placed', 'selected'));
         placedShips.forEach(s => buttons[s.index].classList.add('placed'));
-        
+
         selectedShipIndex = null;
         document.getElementById('btn-confirm-setup').disabled = placedShips.length < SHIP_LENGTHS.length;
         document.getElementById('btn-undo-ship').disabled = placedShips.length === 0;
@@ -581,14 +1020,16 @@
         }
     }
 
-    // --- LOGIC GAMEPLAY ---
+    // =====================================================================
+    // LOGIC GAMEPLAY
+    // =====================================================================
     document.getElementById('btn-ready').addEventListener('click', () => {
         myReady = true;
         document.getElementById('btn-random').style.display = 'none';
         document.getElementById('btn-manual').style.display = 'none';
         document.getElementById('btn-ready').style.display = 'none';
         statusText.innerText = "Đang chờ địch...";
-        conn.send({ type: 'ready' });
+        if (conn && conn.open) conn.send({ type: 'ready' });
         checkGameStart();
     });
 
@@ -621,10 +1062,11 @@
         if (!gameStarted || !myTurn) return;
         const cell = enemyBoardEl.children[idx];
         if (cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+        if (!conn || !conn.open) return;
 
         myTurn = false;
         conn.send({ type: 'fire', index: idx, isAirstrike: airstrikeMode });
-        
+
         if (airstrikeMode) {
             hasAirstrike = false; airstrikeMode = false;
             const btn = document.getElementById('btn-airstrike');
@@ -648,9 +1090,9 @@
 
         document.getElementById('my-hp').innerText = `Tàu còn lại: ${myHpRemaining}/17`;
         const gameOver = myHpRemaining <= 0;
-        conn.send({ type: 'fire-result', hits, misses, gameOver });
+        if (conn && conn.open) conn.send({ type: 'fire-result', hits, misses, gameOver });
 
-        if (gameOver) { gameStarted = false; showGameOverModal(false); } 
+        if (gameOver) { gameStarted = false; showGameOverModal(false); }
         else { myTurn = true; updateTurnUI(); }
     }
 
@@ -660,37 +1102,40 @@
         if (data.hits.length > 0) enemyHpRemaining -= data.hits.length;
         document.getElementById('enemy-hp').innerText = `Sinh lực địch: ${enemyHpRemaining}/17`;
 
-        if (data.gameOver) { gameStarted = false; showGameOverModal(true); } 
+        if (data.gameOver) { gameStarted = false; showGameOverModal(true); }
         else { myTurn = false; updateTurnUI(); }
     }
 
-    // --- GAME OVER MODAL & RESET GAME ---
+    // =====================================================================
+    // GAME OVER MODAL & RESET GAME
+    // =====================================================================
     function showGameOverModal(isWin) {
         const modal = document.getElementById('game-over-modal');
         const title = document.getElementById('go-title');
         const desc = document.getElementById('go-desc');
-        
+
         title.innerText = isWin ? "🏆 CHIẾN THẮNG!" : "💥 THẤT BẠI!";
         title.style.color = isWin ? "var(--accent-green)" : "var(--accent-red)";
         desc.innerText = isWin ? "Bạn đã tiêu diệt toàn bộ hạm đội địch." : "Hạm đội của bạn đã bị phá hủy hoàn toàn.";
-        
+
         playAgainMyState = false;
         playAgainEnemyState = false;
         updatePlayAgainBtnUI();
-        
+
         modal.style.display = 'flex';
     }
 
     document.getElementById('btn-play-again').addEventListener('click', () => {
         if (playAgainMyState) return;
         playAgainMyState = true;
-        conn.send({ type: 'play-again' });
+        if (conn && conn.open) conn.send({ type: 'play-again' });
         updatePlayAgainBtnUI();
         checkBothPlayAgain();
     });
 
     document.getElementById('btn-return-home').addEventListener('click', () => {
-        location.reload(); // Cách tốt nhất để giải phóng RAM triệt để cho máy Android/iOS
+        hasIntentionallyLeft = true;
+        location.reload();
     });
 
     function handleEnemyPlayAgain() {
@@ -702,7 +1147,7 @@
     function updatePlayAgainBtnUI() {
         const btn = document.getElementById('btn-play-again');
         const total = (playAgainMyState ? 1 : 0) + (playAgainEnemyState ? 1 : 0);
-        
+
         if (playAgainMyState && !playAgainEnemyState) {
             btn.innerText = `Đang chờ bạn bè... (1/2)`;
             btn.style.background = "#e67e22";
@@ -724,13 +1169,13 @@
         myShips.fill(0);
         enemyHpRemaining = 17; myHpRemaining = 17;
         myReady = false; enemyReady = false; gameStarted = false; myTurn = false;
-        
+
         // Reset Bàn cờ địch
         Array.from(enemyBoardEl.children).forEach(c => c.className = 'cell');
-        
+
         // Reset Bàn cờ ta
         resetBoardStateUI();
-        
+
         // Cập nhật UI
         document.getElementById('my-hp').innerText = `Tàu còn lại: 17/17`;
         document.getElementById('enemy-hp').innerText = `Sinh lực địch: 17/17`;
@@ -738,7 +1183,7 @@
         document.getElementById('btn-manual').style.display = 'inline-block';
         document.getElementById('btn-ready').style.display = 'inline-block';
         document.getElementById('btn-airstrike').style.display = 'none';
-        
+
         statusText.innerText = "Ván mới! Hãy xếp tàu.";
         statusText.style.color = "var(--accent-green)";
         spawnDanmaku("Trận tái đấu bắt đầu! Hãy xếp tàu.", true);
@@ -746,6 +1191,156 @@
 
     document.getElementById('my-hp').innerText = `Tàu còn lại: 17/17`;
     document.getElementById('enemy-hp').innerText = `Sinh lực địch: 17/17`;
+
+    // =====================================================================
+    // THÔNG BÁO TÙY CHỈNH (thay cho alert/confirm mặc định của trình duyệt)
+    // =====================================================================
+    const TOAST_ICONS = { success: '✅', error: '❌', info: 'ℹ️' };
+
+    function showToast(message, kind) {
+        kind = kind || 'info';
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${kind}`;
+        el.innerHTML = `<span class="toast-icon">${TOAST_ICONS[kind] || 'ℹ️'}</span><span>${message}</span>`;
+        container.appendChild(el);
+        setTimeout(() => {
+            el.classList.add('hide');
+            setTimeout(() => el.remove(), 250);
+        }, 3200);
+    }
+
+    function showConfirm(title, desc, onConfirm) {
+        const modal = document.getElementById('confirm-modal');
+        document.getElementById('confirm-title').innerText = title;
+        document.getElementById('confirm-desc').innerText = desc;
+        modal.style.display = 'flex';
+
+        const okBtn = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            okBtn.replaceWith(okBtn.cloneNode(true));
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        };
+        document.getElementById('confirm-ok-btn').addEventListener('click', () => { cleanup(); onConfirm(); }, { once: true });
+        document.getElementById('confirm-cancel-btn').addEventListener('click', () => { cleanup(); }, { once: true });
+    }
+
+    // =====================================================================
+    // PHÁT HIỆN ĐỐI THỦ RỜI TRẬN + POPUP CHỜ QUAY LẠI
+    // =====================================================================
+    const disconnectModal = document.getElementById('disconnect-modal');
+    const chooseBox = document.getElementById('reconnect-choose-box');
+    const waitingBox = document.getElementById('reconnect-waiting-box');
+    const countdownEl = document.getElementById('disconnect-countdown');
+
+    function handleDisconnection() {
+        if (hasIntentionallyLeft) return; // người dùng tự thoát, không cần cảnh báo
+        if (disconnectModal.style.display === 'flex') return; // đã hiện rồi
+
+        // Phòng trống trở lại, có thể lại nhận người chơi mới -> cập nhật danh sách
+        if (typeof announceMyRoomToDirectory === 'function') announceMyRoomToDirectory();
+
+        // Ẩn modal kết thúc game nếu đang mở, ưu tiên modal ngắt kết nối
+        document.getElementById('game-over-modal').style.display = 'none';
+
+        chooseBox.style.display = 'block';
+        waitingBox.style.display = 'none';
+        document.querySelectorAll('.wait-option').forEach(b => b.classList.remove('selected'));
+        disconnectModal.style.display = 'flex';
+
+        spawnDanmaku("⚠️ Đối thủ đã rời trận!", false);
+        showToast("Đối thủ đã rời trận đấu!", "error");
+    }
+
+    document.querySelectorAll('.wait-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.wait-option').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            const secs = parseInt(btn.dataset.secs, 10);
+            startReconnectCountdown(secs);
+        });
+    });
+
+    function startReconnectCountdown(totalSeconds) {
+        chooseBox.style.display = 'none';
+        waitingBox.style.display = 'block';
+
+        disconnectDeadline = Date.now() + totalSeconds * 1000;
+        updateCountdownDisplay();
+
+        if (disconnectTimerInterval) clearInterval(disconnectTimerInterval);
+        disconnectTimerInterval = setInterval(() => {
+            const remainingMs = disconnectDeadline - Date.now();
+            if (remainingMs <= 0) {
+                clearInterval(disconnectTimerInterval);
+                disconnectTimerInterval = null;
+                onReconnectTimeout();
+                return;
+            }
+            updateCountdownDisplay();
+        }, 250);
+
+        // Nếu là host, sẵn sàng nhận kết nối mới tự động qua peer.on('connection').
+        // Nếu là người tham gia (đã join), thử tự động kết nối lại vào mã phòng cũ định kỳ.
+        if (!isHost && currentPeerRoomCode) {
+            attemptAutoReconnect(totalSeconds);
+        }
+    }
+
+    function attemptAutoReconnect(totalSeconds) {
+        const retryEndTime = Date.now() + totalSeconds * 1000;
+        const retryInterval = setInterval(() => {
+            if (conn && conn.open) { clearInterval(retryInterval); return; }
+            if (Date.now() >= retryEndTime) { clearInterval(retryInterval); return; }
+            if (!peer || peer.destroyed) { clearInterval(retryInterval); return; }
+            try {
+                conn = peer.connect(ROOM_PREFIX + currentPeerRoomCode, { reliable: true });
+                setupConnection();
+            } catch (e) { /* thử lại ở vòng lặp tiếp theo */ }
+        }, 3000);
+    }
+
+    function updateCountdownDisplay() {
+        const remainingMs = Math.max(0, disconnectDeadline - Date.now());
+        const totalSec = Math.ceil(remainingMs / 1000);
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        countdownEl.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function onReconnectTimeout() {
+        spawnDanmaku("Đối thủ không quay lại. Trận đấu kết thúc.", false);
+        closeDisconnectModal();
+        hasIntentionallyLeft = true;
+        setTimeout(() => location.reload(), 1500);
+    }
+
+    function closeDisconnectModal() {
+        if (disconnectTimerInterval) { clearInterval(disconnectTimerInterval); disconnectTimerInterval = null; }
+        disconnectModal.style.display = 'none';
+        chooseBox.style.display = 'block';
+        waitingBox.style.display = 'none';
+    }
+
+    document.getElementById('btn-cancel-wait').addEventListener('click', () => {
+        hasIntentionallyLeft = true;
+        location.reload();
+    });
+
+    // Báo cho danh sách phòng biết phòng này không còn mở nữa khi rời trang
+    window.addEventListener('beforeunload', () => {
+        if (isHost && myRoomCode) {
+            const payload = { action: 'unregister', roomCode: myRoomCode };
+            if (isDirectoryHost) {
+                directoryEntries.delete(myRoomCode);
+            } else if (directoryConn && directoryConn.open) {
+                try { directoryConn.send(payload); } catch (e) {}
+            }
+        }
+    });
 </script>
 </body>
 </html>
